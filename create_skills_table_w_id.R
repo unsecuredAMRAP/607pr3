@@ -7,6 +7,8 @@
 # Also creates df_skills_melt, which retains the position # of each skill in each job posting: Fares
 # wanted to look at these patterns
 
+# to export: tbl_skills_master, tmp_tbl_skills_w_count for validations, df_skills_melt (stores position of each skill in each posting)
+
 
 library (tidyverse)
 library(DBI)
@@ -25,7 +27,10 @@ df_skills<-fetch(db_res,n=-1)
 str(df_skills)  
 summary(df_skills)
 
-#-------- Parse comma delimited list of skills into columns
+#-------- Parse comma delimited list of skills into columns: 
+
+# NOTE I capped this at 200 skills; 32 positions had more than 200
+
 
 df_skills_parsed <- df_skills %>% 
   separate_wider_delim(job_skills, delim=",",names=c("Skill_1","Skill_2","Skill_3","Skill_4","Skill_5",

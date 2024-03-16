@@ -1,0 +1,311 @@
+---
+title: "607_project3"
+author: "Team 4"
+date: "2024-03-13"
+output: html_document
+---
+
+#### Packages
+```{r, warning=FALSE, message=FALSE}
+library(RMySQL)
+library(DBI)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+#### Connection to the SQL Server
+```{r, echo=FALSE}
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "project_3_team",
+                 host = "data607-afox03.mysql.database.azure.com",
+                 port = 3306,
+                 user = "Fares",
+                 password = "password")
+```
+
+
+#### Importing the DB
+```{r}
+# retrieving
+sql_query <- "
+SELECT
+  jp.posting_id,
+  jp.URL,
+  jp.first_seen,
+  jp.last_processed,
+  jpswd.skills_id,
+  jpswd.skills_desc,
+  t.title_desc,
+  ct.city_desc,
+  cn.country_desc,
+  jl.job_level_desc,
+  osf.onsite_desc
+FROM
+  tbl_job_posting AS jp
+  LEFT JOIN tbl_job_posting_skills_w_desc AS jpswd ON jp.posting_id = jpswd.posting_id
+  LEFT JOIN tbl_title AS t ON jp.title_id = t.title_id
+  LEFT JOIN tbl_city AS ct ON jp.city_id = ct.city_id
+  LEFT JOIN tbl_country AS cn ON jp.country_id = cn.country_id
+  LEFT JOIN tbl_job_level AS jl ON jp.job_level_id = jl.job_level_id
+  LEFT JOIN tbl_onsite_flag AS osf ON jp.onsite_flag_id = osf.onsite_flag_id
+"
+
+# join data
+joined_data <- dbGetQuery(con, sql_query)
+
+# save
+write.csv(joined_data, "C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/merged_data3.csv", row.names = FALSE)
+
+DBI::dbDisconnect(con)
+```
+
+
+#### Tidying and Transformations
+```{r}
+# if needed to load the dataframe
+joined_data <- read.csv("C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/merged_data3.csv")
+
+```
+
+
+#### Exploring the data
+```{r}
+# unique values for country_desc
+unique_countries <- distinct(joined_data, country_desc) %>% arrange(country_desc)
+unique_countries
+
+# Remove the carriage return character from the country descriptions
+joined_data <- joined_data %>%
+  mutate(country_desc = gsub("\r", "", country_desc))
+
+
+unique_postings_by_country <- joined_data %>%
+  select(posting_id, country_desc) %>%
+  distinct()
+
+country_frequency <- unique_postings_by_country %>%
+  filter(country_desc %in% c("Australia", "Canada", "United Kingdom", "United States")) %>%
+  group_by(country_desc) %>%
+  summarise(frequency = n()) %>%
+  ungroup() %>%
+  arrange(desc(frequency))
+country_frequency
+```
+
+So this dataset only includes job postings in the USA (the vast majority, 10,277), UK (994), Canada (630), and Australia (301).
+
+```{r}
+joined_data <- joined_data %>%
+  mutate(job_level_desc = gsub("\r", "", job_level_desc))
+joined_data <- joined_data %>%
+  mutate(job_level_desc = gsub("\n", "", job_level_desc))
+
+unique_job_levels_vector <- distinct(joined_data, job_level_desc) %>% arrange(job_level_desc) %>% pull(job_level_desc)
+
+# unique values for job_level_desc
+unique_postings_by_joblevel <- joined_data %>%
+  select(posting_id, job_level_desc) %>%
+  distinct() 
+
+job_level_frequency <- unique_postings_by_joblevel %>%
+  filter(job_level_desc %in% c("Associate", "Mid senior")) %>%
+  group_by(job_level_desc) %>%
+  summarise(frequency = n()) %>%
+  ungroup() %>%
+  arrange(desc(frequency))
+
+job_level_frequency
+```
+It looks like we only have 2 job levels: Associate (1,297) or Mid-Senior (10,905).
+
+```{r}
+# unique values for onsite_desc
+unique_onsite_flags <- distinct(joined_data, onsite_desc) %>% arrange(onsite_desc)
+unique_onsite_flags
+
+# unique values for job_level_desc
+unique_postings_by_onsite <- joined_data %>%
+  select(posting_id, onsite_desc) %>%
+  distinct() 
+
+job_onsite_frequency <- unique_postings_by_onsite %>%
+  filter(onsite_desc %in% c("Hybrid", "Remote", "On_Site")) %>%
+  group_by(onsite_desc) %>%
+  summarise(frequency = n()) %>%
+  ungroup() %>%
+  arrange(desc(frequency))
+
+job_onsite_frequency
+```
+As expected, we have three possibilities for the job nature: onsite (the very vast majority, 12,174), remote (18), or hybrid (10).
+
+#### Visualization
+```{r}
+# after joining, the data is now in long-form and is ready to check the frequency of skills
+skill_frequency <- joined_data %>%
+  group_by(skills_desc) %>%
+  summarise(frequency = n()) %>%
+  ungroup() %>%
+  arrange(desc(frequency))
+
+skill_frequency
+
+# visualization - bar chart
+ggplot(head(skill_frequency, 10), aes(x = reorder(skills_desc, frequency), y = frequency)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  coord_flip() + 
+  labs(x = "Skill", y = "Frequency", title = "Top 10 Skills by Frequency")
+
+# making it nicer
+ggplot(head(skill_frequency, 10), aes(x = reorder(skills_desc, frequency), y = frequency, fill = skills_desc)) +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  scale_fill_viridis_d() + 
+  coord_flip() + 
+  labs(x = "Skill",
+       y = "Frequency",
+       title = "Top 10 Skills by Frequency",
+       subtitle = "Based on job postings data") +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_blank(), 
+    axis.text.x = element_text(size = 12), 
+    axis.text.y = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"), 
+    plot.subtitle = element_text(size = 14), 
+    plot.margin = margin(1, 1, 1, 1, "cm")
+  )
+```
+
+
+#### Word Cloud
+```{r, warning=FALSE, message=FALSE}
+library(wordcloud)
+
+png("C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/wordcloud500.png", width = 2500, height = 1500)
+wordcloud(words = skill_frequency$skills_desc, freq = skill_frequency$frequency, min.freq = 500)
+dev.off()
+
+wordcloud(words = skill_frequency$skills_desc, freq = skill_frequency$frequency, min.freq = 500, max.words = 200)
+
+wordcloud(words = skill_frequency$skills_desc, freq = skill_frequency$frequency, min.freq = 100, scale = c(3, .5))
+```
+One more: Freq >= 100
+![word cloud of freq 100](C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/wordcloud100.png "Freq >= 100")
+Freq >= 20
+![word cloud of freq 20](C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/wordcloud20.png "Freq >= 20")
+
+
+#### Heat Map
+```{r}
+skill_frequency$index <- seq_along(skill_frequency$skills_desc)
+
+top_skills <- skill_frequency %>%
+  filter(frequency >= 100) %>%
+  top_n(20, frequency)
+
+ggplot(top_skills, aes(x = factor(1), y = reorder(skills_desc, frequency), fill = frequency)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "lightblue", high = "blue") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(size = 12, face = "bold", hjust = 0.5)
+  ) +
+  labs(fill = "Frequency", y = "Skill", title = "Top 20 Skills by Frequency") +
+  coord_fixed(ratio = 1)
+```
+#### Model 1: 
+```{r}
+skill_freq_by_job_level <- joined_data %>%
+  filter(job_level_desc %in% c("Associate", "Mid senior")) %>%
+  count(job_level_desc, skills_desc) %>%
+  group_by(skills_desc) %>%
+  mutate(total_freq = sum(n)) %>%
+  ungroup() %>%
+  arrange(desc(total_freq)) %>%
+  slice(1:10) 
+
+ggplot(skill_freq_by_job_level, aes(x = reorder(skills_desc, total_freq), y = n, fill = job_level_desc)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_viridis_d() +
+  coord_flip() +
+  labs(x = "Skill", 
+       y = "Frequency", 
+       title = "Top 10 Skills by Frequency", 
+       subtitle = "Stratified by Job Level") +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_blank(), 
+    axis.text.x = element_text(size = 12), 
+    axis.text.y = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"), 
+    plot.subtitle = element_text(size = 14), 
+    plot.margin = margin(1, 1, 1, 1, "cm"), 
+    legend.position = "bottom"
+  )
+
+# But this is showing huge differences between the two levels because of the huge difference in how many of each level there is in the first place. To make the comparison easier and account for the differences in the number of job postings at each job level, I will normalize the frequencies. I'll show the proportion of postings that mention each skill within each job level, rather than the raw counts. 
+
+skill_freq_by_job_level <- joined_data %>%
+  filter(job_level_desc %in% c("Associate", "Mid senior")) %>%
+  count(job_level_desc, skills_desc) %>%
+  group_by(job_level_desc) %>%
+  mutate(frequency_proportion = n / sum(n)) %>%
+  ungroup() %>%
+  group_by(skills_desc) %>%
+  mutate(total_freq = sum(n)) %>%
+  ungroup() %>%
+  arrange(desc(total_freq)) %>%
+  slice(1:10)
+
+ggplot(skill_freq_by_job_level, aes(x = reorder(skills_desc, total_freq), y = frequency_proportion, fill = job_level_desc)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_viridis_d() +
+  coord_flip() +
+  labs(x = "Skill", 
+       y = "Proportion", 
+       title = "Top 10 Skills by Normalized Frequency", 
+       subtitle = "Stratified by Job Level") +
+  theme_minimal() +
+  theme(
+    axis.title.y = element_blank(), 
+    axis.text.x = element_text(size = 12), 
+    axis.text.y = element_text(size = 12),
+    plot.title = element_text(size = 16, face = "bold"), 
+    plot.subtitle = element_text(size = 14), 
+    plot.margin = margin(1, 1, 1, 1, "cm"), 
+    legend.position = "bottom"
+  )
+```
+#### Statistical analysis for the skills frequency by job level:
+```{r, warning=FALSE, message=FALSE}
+# a contingency table of counts of skills by job level
+contingency_table <- xtabs(n ~ job_level_desc + skills_desc, data = skill_freq_by_job_level)
+
+# chi-squared test
+chi_squared_result <- chisq.test(contingency_table)
+chi_squared_result
+```
+**The chi square test came out to be statistically significant. The very low p-value indicates that there is a statistically significant difference between the skill frequencies across different job levels. Therefore, the frequency of skill mentions is dependent on the job level. The skills mentioned in job postings are not randomly distributed across 'Associate' and 'Mid senior' levels; there is a pattern to their distribution that is statistically significant.**
+
+#### Logistic regression model for the skills frequency by job level:
+```{r}
+binary_data <- skill_freq_by_job_level %>%
+  uncount(n) %>%
+  mutate(mentioned = 1)
+
+logistic_model <- glm(mentioned ~ job_level_desc + skills_desc, data = binary_data, family = "binomial")
+
+logistic_model
+```
+This warning suggests that the iterative process used to find the maximum likelihood estimates for the logistic regression model did not successfully converge to a stable solution. 
+
+#### Models by country or job onsite/remote:
+Unfortunately, the number of instances for the different possible values for these variables are too small to be able to build any meaningful model. The VAST MAJORITY of these job postings were for onsite jobs located in the United States.

@@ -1,0 +1,126 @@
+---
+title: "semyonWordCloud"
+author: "Semyon Toybis"
+date: "2024-03-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading the required packages 
+
+Below I load the required packages.
+
+```{r echo=FALSE}
+library(RMySQL)
+library(DBI)
+library(tidyverse)
+library(wordcloud2)
+
+```
+
+## Loading data from the database
+
+Below I import tbl_job_posting_skills_w_desc from our database, which is a table that has job posting ID, Skill ID, and skill description. As seen from the glimpse function, the data set is massive.
+
+```{r}
+
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "project_3_team",
+                 host = "data607-afox03.mysql.database.azure.com",
+                 port = 3306,
+                 user = "Semyon",
+                 password = "password")
+
+
+query = dbSendQuery(con, "SELECT * FROM project_3_team.tbl_job_posting_skills_w_desc;")
+
+
+job_skillsDF <-fetch(query, n = -1)
+
+glimpse(job_skillsDF)
+```
+
+## Cleaning the data
+
+Below I convert all of the skills into lower case. This is to make the skills case insensitive. Ie, Python and python would be two different skills if there was case sensitivity. I also remove the "\\r" character.
+
+```{r}
+#lower case
+job_skillsDF$skills_desc <- str_to_lower(job_skillsDF$skills_desc)
+job_skillsDF$skills_desc <- str_replace_all(job_skillsDF$skills_desc, '\\r','')
+```
+
+## Evaluating the length of skill strings
+
+Below I add a column that contains the length of the strings. This will be necessary to remove outliers.
+
+```{r}
+#length of string
+job_skillsDF$skill_desc_length <- str_count(job_skillsDF$skills_desc)
+
+job_skillsDF <- arrange(job_skillsDF, skill_desc_length)
+
+tail(job_skillsDF, n = 10)
+```
+
+As we can see above, there are skills that are pretty much whole sentences. This does not provide much insight as we are interested in specific skills (eg, Python, Excel, etc).
+
+## Removing outliers
+
+Below I use a histogram to visualize the length of the strings
+
+```{r}
+hist(job_skillsDF$skill_desc_length)
+
+summary(job_skillsDF$skill_desc_length)
+```
+
+Based on the above, it seems like removing skills that have a length of greater than 25 will capture most of the data and will remove skills that are sentences.
+
+```{r}
+job_skillsDF_filtered <- job_skillsDF |> filter(skill_desc_length < 25)
+
+job_skillsDF_filtered <- arrange(job_skillsDF_filtered, skill_desc_length)
+
+tail(job_skillsDF_filtered, n = 10)
+
+
+```
+
+## Tallying the frequency of each skill
+
+Below I create a table that counts the frequency of each unique skill
+
+```{r}
+freqOfSkills <- as.data.frame(table(job_skillsDF_filtered$skills_desc))
+
+#freqOfSkills <- arrange(freqOfSkills, Freq)
+
+#tail(freqOfSkills, n = 10)
+summary(freqOfSkills$Freq)
+```
+
+## Removing skills that rarely appear
+
+Based on the above, the data can use more filter, as the top skill appears nearly 5000 times while some skills appear only once. We will filter for skills that appear at least 500 times
+
+```{r}
+
+filterValue <- 500
+
+freqOfSkillsFiltered <- freqOfSkills |> filter(Freq >= filterValue)
+
+```
+
+## Word cloud
+
+Below I create a word cloud of the skills for data science jobs
+
+```{r}
+set.seed(1234)
+wordcloud2(data = freqOfSkillsFiltered, size = 1.6, color = 'random-dark')
+```

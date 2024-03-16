@@ -1,0 +1,132 @@
+---
+title: "607_project3"
+author: "Fares A"
+date: "2024-03-13"
+output: html_document
+---
+
+Packages
+```{r, warning=FALSE}
+library(RMySQL)
+library(DBI)
+library(dplyr)
+library(tidyverse)
+```
+
+
+Connection to the SQL Server
+```{r}
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "project_3_team",
+                 host = "data607-afox03.mysql.database.azure.com",
+                 port = 3306,
+                 user = "Fares",
+                 password = "password")
+```
+
+
+Importing the DB
+```{r, eval=FALSE, echo=FALSE}
+# retrieve
+job_postings <- dbGetQuery(con, "SELECT * FROM job_posting")
+job_skills <- dbGetQuery(con, "SELECT * FROM job_skills")
+
+# merge (inner join)
+combined_data <- dbGetQuery(con, "
+SELECT jp.*, js.*
+FROM job_posting jp
+INNER JOIN job_skills js ON jp.ID_simple = js.ID_simple
+")
+
+# to fix resulting duplicate columns
+rename_duplicates <- function(df){
+  names_df <- names(df)
+  duplicates <- names_df[duplicated(names_df)]
+  for(dup in duplicates){
+    # Find indices of duplicates
+    dup_indices <- which(names_df == dup)
+    # Rename duplicates by appending a suffix
+    names_df[dup_indices] <- paste0(dup, "_", seq_along(dup_indices))
+  }
+  names(df) <- names_df
+  return(df)
+}
+combined_data_unique <- rename_duplicates(combined_data)
+
+# Or we can just delete the duplicate columns
+
+# save
+write.csv(combined_data_unique, "C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/merged_data2.csv", row.names = FALSE)
+
+DBI::dbDisconnect(con)
+```
+
+```{r}
+# retrieving
+sql_query <- "
+SELECT
+  jp.posting_id,
+  jp.URL,
+  jp.first_seen,
+  jp.last_processed,
+  jpswd.skills_id,
+  jpswd.skills_desc,
+  t.title_desc,
+  ct.city_desc,
+  cn.country_desc,
+  jl.job_level_desc,
+  osf.onsite_desc
+FROM
+  tbl_job_posting AS jp
+  LEFT JOIN tbl_job_posting_skills_w_desc AS jpswd ON jp.posting_id = jpswd.posting_id
+  LEFT JOIN tbl_title AS t ON jp.title_id = t.title_id
+  LEFT JOIN tbl_city AS ct ON jp.city_id = ct.city_id
+  LEFT JOIN tbl_country AS cn ON jp.country_id = cn.country_id
+  LEFT JOIN tbl_job_level AS jl ON jp.job_level_id = jl.job_level_id
+  LEFT JOIN tbl_onsite_flag AS osf ON jp.onsite_flag_id = osf.onsite_flag_id
+"
+
+# joined data
+joined_data <- dbGetQuery(con, sql_query)
+
+# save
+write.csv(joined_data, "C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/merged_data3.csv", row.names = FALSE)
+
+DBI::dbDisconnect(con)
+```
+
+
+Tidying and Transformations
+```{r}
+# if needed to load the dataframe
+skills_df <- read.csv("C:/Users/lenov/Dropbox/_CUNY SPS MSDS/607/Project 3/merged_data2.csv")
+
+# working to find the skills
+merged_data_separated <- skills_df %>%
+  # splitting the 'job_skills' on each comma
+  mutate(job_skills_list = strsplit(job_skills, ",\\s*")) %>%
+  # Convert the list into separate columns
+  unnest_wider(job_skills_list, names_sep = "_")
+
+# to make it easier computationally, I'll temporarily use a subset of the main df
+smaller_data <- merged_data_separated %>%
+  select(ID_simple_1, starts_with("job_skills_list_"))
+
+# finding the unique skills
+unique_skills <- combined_data_unique %>%
+  select(starts_with("job_skills_list_")) %>%
+  pivot_longer(cols = everything(), values_to = "skills") %>%
+  distinct(skills, .keep_all = TRUE) %>%
+  filter(!is.na(skills)) %>%
+  arrange(skills)
+
+```
+
+
+Word Cloud
+```{r}
+# code here
+merged_data_separated
+```
+
+

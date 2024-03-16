@@ -1,4 +1,8 @@
--- Create tbl_job_posting: one row per job posting
+-- This script creates the nine tables and loads in data from .txt. files
+
+-- --------------------------------------------------------
+-- Create main tbl_job_posting: one row per job posting
+-- --------------------------------------------------------
 
 drop table if exists tbl_job_posting;
 create table tbl_job_posting (
@@ -11,7 +15,7 @@ create table tbl_job_posting (
     location_id varchar(8),
     city_id varchar(8),
     country_id varchar(8),
-    search_position_id varchar(8),
+    search_pos_id varchar(8),
     job_level_id varchar(8),
     onsite_flag_id varchar(8)
 	);
@@ -22,19 +26,9 @@ select * from tbl_job_posting;
 select count(*) from tbl_job_posting;
 
 
-drop table if exists tbl_job_posting_skills;
-create table tbl_job_posting_skills(
-	posting_id varchar(8),
-    skill_id varchar(8)
-	);
-load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills2.txt'
-into table tbl_job_posting_skills
-ignore 1 rows;
-select count(*) from tbl_job_posting_skills;
-select * from tbl_job_posting_skills;
 -- -----------------------------------------------------------
 -- Create all lookup tables
-
+-- -----------------------------------------------------------
 drop table if exists tbl_title;
 create table tbl_title (
 	title_id varchar(8) primary key,
@@ -97,8 +91,8 @@ select count(*) from tbl_search_position;
 
 drop table if exists tbl_job_level;
 create table tbl_job_level(
-	job_level_pos_id varchar(8) primary key,
-    job_level_pos_desc longtext
+	job_level_id varchar(8) primary key,
+    job_level_desc longtext
 	);
 load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_level.txt'
 into table tbl_job_level
@@ -106,24 +100,59 @@ ignore 1 rows;
 select * from tbl_job_level;
 select count(*) from tbl_job_level;
 
-
 drop table if exists tbl_onsite_flag;
-create table tbl_onsite_flag(
-	onsite_flag_id varchar(8) primary key,
-    onsite_flag_desc longtext
+create table tbl_onsite_flag as
+SELECT distinct onsite_flag_id
+FROM project_3_team.tbl_job_posting;
+
+ALTER TABLE tbl_onsite_flag ADD COLUMN onsite_desc varchar(20);
+UPDATE 
+  tbl_onsite_flag 
+SET onsite_desc = CASE onsite_flag_id 
+                  WHEN 1 THEN "On_Site"
+                  WHEN 2 THEN "Hybrid"
+                  ELSE "Remote"
+                END;
+
+
+drop table if exists tbl_job_posting_skills_w_desc;
+create table tbl_job_posting_skills_w_desc (
+	posting_id varchar(20),
+    skills_id varchar(20),
+    skills_desc varchar(255)
 	);
-load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_onsite_flag.txt'
-into table tbl_onsite_flag
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills_w_desc.txt'
+into table tbl_job_posting_skills_w_desc
+FIELDS TERMINATED BY '\t'
 ignore 1 rows;
-select * from tbl_onsite_flag;
+show warnings;   
+select * from tbl_job_posting_skills_w_desc;
+select count(*) from tbl_job_posting_skills_w_desc;
+
+
+/* the following is not used - the skills_master caused errors in loading and links failed
+
+drop table if exists tbl_job_posting_skills;
+create table tbl_job_posting_skills(
+	posting_id varchar(8),
+    skill_id varchar(8)
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills3.txt'
+into table tbl_job_posting_skills
+FIELDS TERMINATED BY '\t'
+ignore 1 rows;
+select count(*) from tbl_job_posting_skills;
+select * from tbl_job_posting_skills;
+
 
 drop table if exists tbl_skills_master;
 create table tbl_skills_master(
-	skill_id varchar(8),
-    skill_desc longtext
+	skill_id varchar(20),
+    skill_desc varchar(255)
 	);
-load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_skills_master2.txt'
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_skills_master3.txt'
 into table tbl_skills_master
 ignore 1 rows;
 select * from tbl_skills_master;
 select count(*) from tbl_skills_master;
+*/

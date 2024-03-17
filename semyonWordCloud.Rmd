@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Loading the required packages 
+## Loading the required packages
 
 Below I load the required packages.
 
@@ -101,6 +101,10 @@ freqOfSkills <- as.data.frame(table(job_skillsDF_filtered$skills_desc))
 #freqOfSkills <- arrange(freqOfSkills, Freq)
 
 #tail(freqOfSkills, n = 10)
+colnames(freqOfSkills) <- c('word', 'freq')
+rownames(freqOfSkills) <- freqOfSkills$word
+
+
 summary(freqOfSkills$Freq)
 ```
 
@@ -112,7 +116,7 @@ Based on the above, the data can use more filter, as the top skill appears nearl
 
 filterValue <- 500
 
-freqOfSkillsFiltered <- freqOfSkills |> filter(Freq >= filterValue)
+freqOfSkillsFiltered <- freqOfSkills |> filter(freq >= filterValue)
 
 ```
 
@@ -122,5 +126,5 @@ Below I create a word cloud of the skills for data science jobs
 
 ```{r}
 set.seed(1234)
-wordcloud2(data = freqOfSkillsFiltered, size = 1.6, color = 'random-dark')
+wordcloud2(data = freqOfSkillsFiltered, size = 0.4, color = 'random-dark')
 ```

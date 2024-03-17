@@ -59,16 +59,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="Project_3_Group_4_Part_1_files/libs/clipboard/clipboard.min.js"></script>
-<script src="Project_3_Group_4_Part_1_files/libs/quarto-html/quarto.js"></script>
-<script src="Project_3_Group_4_Part_1_files/libs/quarto-html/popper.min.js"></script>
-<script src="Project_3_Group_4_Part_1_files/libs/quarto-html/tippy.umd.min.js"></script>
-<script src="Project_3_Group_4_Part_1_files/libs/quarto-html/anchor.min.js"></script>
-<link href="Project_3_Group_4_Part_1_files/libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="Project_3_Group_4_Part_1_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="Project_3_Group_4_Part_1_files/libs/bootstrap/bootstrap.min.js"></script>
-<link href="Project_3_Group_4_Part_1_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="Project_3_Group_4_Part_1_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="Project_3_Data_Preparation_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Project_3_Data_Preparation_files/libs/quarto-html/quarto.js"></script>
+<script src="Project_3_Data_Preparation_files/libs/quarto-html/popper.min.js"></script>
+<script src="Project_3_Data_Preparation_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Project_3_Data_Preparation_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Project_3_Data_Preparation_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Project_3_Data_Preparation_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Project_3_Data_Preparation_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Project_3_Data_Preparation_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Project_3_Data_Preparation_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 
 
 </head>
@@ -304,11 +304,17 @@ dttm  (1): last_processed_time
 <span id="cb8-90"><a href="#cb8-90" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"onsite_flag_desc"</span>))</span>
 <span id="cb8-91"><a href="#cb8-91" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-92"><a href="#cb8-92" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb8-93"><a href="#cb8-93" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_title)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb8-93"><a href="#cb8-93" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df_title)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>tibble [6,484 × 2] (S3: tbl_df/tbl/data.frame)
- $ title_id  : int [1:6484] 1 2 3 4 5 6 7 8 9 10 ...
- $ title_desc: chr [1:6484] "Senior Machine Learning Engineer" "Principal Software Engineer, ML Accelerators" "Senior ETL Data Warehouse Specialist" "Senior Data Warehouse Developer / Architect" ...</code></pre>
+<pre><code># A tibble: 6 × 2
+  title_id title_desc                                  
+     &lt;int&gt; &lt;chr&gt;                                       
+1        1 Senior Machine Learning Engineer            
+2        2 Principal Software Engineer, ML Accelerators
+3        3 Senior ETL Data Warehouse Specialist        
+4        4 Senior Data Warehouse Developer / Architect 
+5        5 Lead Data Engineer                          
+6        6 Senior Data Engineer                        </code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_job_posting_work)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -539,7 +545,7 @@ dbl (1): id_simple
 5 6334263    Java            </code></pre>
 </div>
 </div>
-<p>Finally, we created the skills table and exported it:</p>
+<p>Finally, we created the skills table and exported it to a local Github repo (note that below code exports to working directory):</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create skills lookup table (note: this was not used in MySQL due to unresolved errors)</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>df_skills_master <span class="ot">&lt;-</span> df_skills_melt <span class="sc">%&gt;%</span> </span>
@@ -586,31 +592,148 @@ dbl (1): id_simple
 </section>
 <section id="import-to-mysql" class="level2">
 <h2 class="anchored" data-anchor-id="import-to-mysql">Import to MySQL:</h2>
-<p>The attached SQL script was used to generate the tables and load the data. In loading the data, we found that two main tables still contained an excessive number of rogue commas and invalid characters, which R handled correctly in dataframes but MySQL could not import to tables.</p>
-<p>To resolve: 1. All files were converted to tab-delimited before loading, to handle delimiter issues in text strings like job description or skill description</p>
-<ol start="2" type="1">
-<li>The two main tables also required multiple iterations of removing invalid characters</li>
+<p>A SQL script was created to generate the tables and load the data (see from a local copy of our repo as MySQL could not import them directly from Github. In loading the data, we found that two main tables contained an excessive number of rogue commas and invalid characters, which R had handled in the dataframes but MySQL could not import to tables.</p>
+<p>To resolve:</p>
+<ol type="1">
+<li><p>All files were converted to tab-delimited before loading, to handle delimiter issues in text strings like job description or skill description</p></li>
+<li><p>We completed multiple iterations of removing invalid characters from the main tables</p></li>
 </ol>
-<p>One error required us to denormalize the job posting skills table as a workaround due to time constraints: joins to the planned lookup table “skills_master” containing skill descriptions failed in testing and we found a large number of silent loading errors (“show warnings” command) that could not be resolved in time. Although the resulting job_posting_skills_w_desc table was not normalized, the functionality of the data was maintained.</p>
+<p>During testing, we encountered one error that required us to denormalize the job posting skills table as a workaround due to time constraints: joins to the planned lookup table “skills_master” containing skill descriptions failed. In troubleshooting, we found a large number of silent errors had occurred during the load process (visible when using the “show warnings” command) that were partially resolved by seeking out more invalid characters. A workaround “job_posting_skills_w_desc table” was created, and while not normalized, the functionality of the data was maintained for analysis.</p>
 <p>Record counts and links were validated and the database released for analysis.</p>
-<section id="sql-script" class="level4">
-<h4 class="anchored" data-anchor-id="sql-script">SQL Script:</h4>
-<p>{r sql_load}</p>
-<p>– Create main tbl_job_posting: one row per job posting</p>
-<p>drop table if exists tbl_job_posting; create table tbl_job_posting ( posting_id varchar(8) primary key, URL longtext, first_seen varchar(255), last_processed varchar(255), title_id varchar(8), company_id varchar(8), location_id varchar(8), city_id varchar(8), country_id varchar(8), search_pos_id varchar(8), job_level_id varchar(8), onsite_flag_id varchar(8) ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting.txt’ into table tbl_job_posting ignore 1 rows; select * from tbl_job_posting; select count(*) from tbl_job_posting;</p>
-<p>– Create all lookup tables</p>
-<p>drop table if exists tbl_title; create table tbl_title ( title_id varchar(8) primary key, title_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_title.txt’ into table tbl_title ignore 1 rows; select * from tbl_title; select count(*) from tbl_title;</p>
-<p>drop table if exists tbl_company; create table tbl_company ( company_id varchar(8) primary key, company_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_company.txt’ into table tbl_company ignore 1 rows; select * from tbl_company; select count(*) from tbl_company;</p>
-<p>drop table if exists tbl_city; create table tbl_city ( city_id varchar(8) primary key, city_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_city.txt’ into table tbl_city ignore 1 rows; select * from tbl_city; select count(*) from tbl_city;</p>
-<p>drop table if exists tbl_country; create table tbl_country ( country_id varchar(8) primary key, country_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_country.txt’ into table tbl_country ignore 1 rows; select * from tbl_country; select count(*) from tbl_country;</p>
-<p>drop table if exists tbl_search_position; create table tbl_search_position ( search_pos_id varchar(8) primary key, search_pos_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_search_pos.txt’ into table tbl_search_position ignore 1 rows; select * from tbl_search_position; select count(*) from tbl_search_position;</p>
-<p>drop table if exists tbl_job_level; create table tbl_job_level( job_level_id varchar(8) primary key, job_level_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_level.txt’ into table tbl_job_level ignore 1 rows; select * from tbl_job_level; select count(*) from tbl_job_level;</p>
-<p>drop table if exists tbl_onsite_flag; create table tbl_onsite_flag as SELECT distinct onsite_flag_id FROM project_3_team.tbl_job_posting;</p>
-<p>ALTER TABLE tbl_onsite_flag ADD COLUMN onsite_desc varchar(20); UPDATE tbl_onsite_flag SET onsite_desc = CASE onsite_flag_id WHEN 1 THEN “On_Site” WHEN 2 THEN “Hybrid” ELSE “Remote” END;</p>
-<p>drop table if exists tbl_job_posting_skills_w_desc; create table tbl_job_posting_skills_w_desc ( posting_id varchar(20), skills_id varchar(20), skills_desc varchar(255) ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills_w_desc.txt’ into table tbl_job_posting_skills_w_desc FIELDS TERMINATED BY ’ ignore 1 rows; show warnings;<br>
-select * from tbl_job_posting_skills_w_desc; select count(*) from tbl_job_posting_skills_w_desc;</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode default code-with-copy"><code class="sourceCode default"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>Non-executable SQL script included below for reference only</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>-- This script creates the nine tables and loads in data from .txt. files</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>-- --------------------------------------------------------</span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>-- Create main tbl_job_posting: one row per job posting</span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>-- --------------------------------------------------------</span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_job_posting;</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>create table tbl_job_posting (</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a>    posting_id varchar(8) primary key,</span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a>    URL longtext,</span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>    first_seen varchar(255),</span>
+<span id="cb23-15"><a href="#cb23-15" aria-hidden="true" tabindex="-1"></a>    last_processed varchar(255),</span>
+<span id="cb23-16"><a href="#cb23-16" aria-hidden="true" tabindex="-1"></a>    title_id varchar(8),</span>
+<span id="cb23-17"><a href="#cb23-17" aria-hidden="true" tabindex="-1"></a>    company_id varchar(8),</span>
+<span id="cb23-18"><a href="#cb23-18" aria-hidden="true" tabindex="-1"></a>    location_id varchar(8),</span>
+<span id="cb23-19"><a href="#cb23-19" aria-hidden="true" tabindex="-1"></a>    city_id varchar(8),</span>
+<span id="cb23-20"><a href="#cb23-20" aria-hidden="true" tabindex="-1"></a>    country_id varchar(8),</span>
+<span id="cb23-21"><a href="#cb23-21" aria-hidden="true" tabindex="-1"></a>    search_pos_id varchar(8),</span>
+<span id="cb23-22"><a href="#cb23-22" aria-hidden="true" tabindex="-1"></a>    job_level_id varchar(8),</span>
+<span id="cb23-23"><a href="#cb23-23" aria-hidden="true" tabindex="-1"></a>    onsite_flag_id varchar(8)</span>
+<span id="cb23-24"><a href="#cb23-24" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-25"><a href="#cb23-25" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting.txt'</span>
+<span id="cb23-26"><a href="#cb23-26" aria-hidden="true" tabindex="-1"></a>into table tbl_job_posting</span>
+<span id="cb23-27"><a href="#cb23-27" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-28"><a href="#cb23-28" aria-hidden="true" tabindex="-1"></a>select * from tbl_job_posting;</span>
+<span id="cb23-29"><a href="#cb23-29" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_job_posting;</span>
+<span id="cb23-30"><a href="#cb23-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-31"><a href="#cb23-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-32"><a href="#cb23-32" aria-hidden="true" tabindex="-1"></a>-- -----------------------------------------------------------</span>
+<span id="cb23-33"><a href="#cb23-33" aria-hidden="true" tabindex="-1"></a>-- Create all lookup tables</span>
+<span id="cb23-34"><a href="#cb23-34" aria-hidden="true" tabindex="-1"></a>-- -----------------------------------------------------------</span>
+<span id="cb23-35"><a href="#cb23-35" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_title;</span>
+<span id="cb23-36"><a href="#cb23-36" aria-hidden="true" tabindex="-1"></a>create table tbl_title (</span>
+<span id="cb23-37"><a href="#cb23-37" aria-hidden="true" tabindex="-1"></a>    title_id varchar(8) primary key,</span>
+<span id="cb23-38"><a href="#cb23-38" aria-hidden="true" tabindex="-1"></a>    title_desc longtext</span>
+<span id="cb23-39"><a href="#cb23-39" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-40"><a href="#cb23-40" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_title.txt'</span>
+<span id="cb23-41"><a href="#cb23-41" aria-hidden="true" tabindex="-1"></a>into table tbl_title</span>
+<span id="cb23-42"><a href="#cb23-42" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-43"><a href="#cb23-43" aria-hidden="true" tabindex="-1"></a>select * from tbl_title;</span>
+<span id="cb23-44"><a href="#cb23-44" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_title;</span>
+<span id="cb23-45"><a href="#cb23-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-46"><a href="#cb23-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-47"><a href="#cb23-47" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_company;</span>
+<span id="cb23-48"><a href="#cb23-48" aria-hidden="true" tabindex="-1"></a>create table tbl_company (</span>
+<span id="cb23-49"><a href="#cb23-49" aria-hidden="true" tabindex="-1"></a>    company_id varchar(8) primary key,</span>
+<span id="cb23-50"><a href="#cb23-50" aria-hidden="true" tabindex="-1"></a>    company_desc longtext</span>
+<span id="cb23-51"><a href="#cb23-51" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-52"><a href="#cb23-52" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_company.txt'</span>
+<span id="cb23-53"><a href="#cb23-53" aria-hidden="true" tabindex="-1"></a>into table tbl_company</span>
+<span id="cb23-54"><a href="#cb23-54" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-55"><a href="#cb23-55" aria-hidden="true" tabindex="-1"></a>select * from tbl_company;</span>
+<span id="cb23-56"><a href="#cb23-56" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_company;</span>
+<span id="cb23-57"><a href="#cb23-57" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-58"><a href="#cb23-58" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-59"><a href="#cb23-59" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_city;</span>
+<span id="cb23-60"><a href="#cb23-60" aria-hidden="true" tabindex="-1"></a>create table tbl_city (</span>
+<span id="cb23-61"><a href="#cb23-61" aria-hidden="true" tabindex="-1"></a>    city_id varchar(8) primary key,</span>
+<span id="cb23-62"><a href="#cb23-62" aria-hidden="true" tabindex="-1"></a>    city_desc longtext</span>
+<span id="cb23-63"><a href="#cb23-63" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-64"><a href="#cb23-64" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_city.txt'</span>
+<span id="cb23-65"><a href="#cb23-65" aria-hidden="true" tabindex="-1"></a>into table tbl_city</span>
+<span id="cb23-66"><a href="#cb23-66" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-67"><a href="#cb23-67" aria-hidden="true" tabindex="-1"></a>select * from tbl_city;</span>
+<span id="cb23-68"><a href="#cb23-68" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_city;</span>
+<span id="cb23-69"><a href="#cb23-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-70"><a href="#cb23-70" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-71"><a href="#cb23-71" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_country;</span>
+<span id="cb23-72"><a href="#cb23-72" aria-hidden="true" tabindex="-1"></a>create table tbl_country (</span>
+<span id="cb23-73"><a href="#cb23-73" aria-hidden="true" tabindex="-1"></a>    country_id varchar(8) primary key,</span>
+<span id="cb23-74"><a href="#cb23-74" aria-hidden="true" tabindex="-1"></a>    country_desc longtext</span>
+<span id="cb23-75"><a href="#cb23-75" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-76"><a href="#cb23-76" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_country.txt'</span>
+<span id="cb23-77"><a href="#cb23-77" aria-hidden="true" tabindex="-1"></a>into table tbl_country</span>
+<span id="cb23-78"><a href="#cb23-78" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-79"><a href="#cb23-79" aria-hidden="true" tabindex="-1"></a>select * from tbl_country;</span>
+<span id="cb23-80"><a href="#cb23-80" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_country;</span>
+<span id="cb23-81"><a href="#cb23-81" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-82"><a href="#cb23-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-83"><a href="#cb23-83" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_search_position;</span>
+<span id="cb23-84"><a href="#cb23-84" aria-hidden="true" tabindex="-1"></a>create table tbl_search_position (</span>
+<span id="cb23-85"><a href="#cb23-85" aria-hidden="true" tabindex="-1"></a>    search_pos_id varchar(8) primary key,</span>
+<span id="cb23-86"><a href="#cb23-86" aria-hidden="true" tabindex="-1"></a>    search_pos_desc longtext</span>
+<span id="cb23-87"><a href="#cb23-87" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-88"><a href="#cb23-88" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_search_pos.txt'</span>
+<span id="cb23-89"><a href="#cb23-89" aria-hidden="true" tabindex="-1"></a>into table tbl_search_position</span>
+<span id="cb23-90"><a href="#cb23-90" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-91"><a href="#cb23-91" aria-hidden="true" tabindex="-1"></a>select * from tbl_search_position;</span>
+<span id="cb23-92"><a href="#cb23-92" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_search_position;</span>
+<span id="cb23-93"><a href="#cb23-93" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-94"><a href="#cb23-94" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-95"><a href="#cb23-95" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_job_level;</span>
+<span id="cb23-96"><a href="#cb23-96" aria-hidden="true" tabindex="-1"></a>create table tbl_job_level(</span>
+<span id="cb23-97"><a href="#cb23-97" aria-hidden="true" tabindex="-1"></a>    job_level_id varchar(8) primary key,</span>
+<span id="cb23-98"><a href="#cb23-98" aria-hidden="true" tabindex="-1"></a>    job_level_desc longtext</span>
+<span id="cb23-99"><a href="#cb23-99" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-100"><a href="#cb23-100" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_level.txt'</span>
+<span id="cb23-101"><a href="#cb23-101" aria-hidden="true" tabindex="-1"></a>into table tbl_job_level</span>
+<span id="cb23-102"><a href="#cb23-102" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-103"><a href="#cb23-103" aria-hidden="true" tabindex="-1"></a>select * from tbl_job_level;</span>
+<span id="cb23-104"><a href="#cb23-104" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_job_level;</span>
+<span id="cb23-105"><a href="#cb23-105" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-106"><a href="#cb23-106" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_onsite_flag;</span>
+<span id="cb23-107"><a href="#cb23-107" aria-hidden="true" tabindex="-1"></a>create table tbl_onsite_flag as</span>
+<span id="cb23-108"><a href="#cb23-108" aria-hidden="true" tabindex="-1"></a>SELECT distinct onsite_flag_id</span>
+<span id="cb23-109"><a href="#cb23-109" aria-hidden="true" tabindex="-1"></a>FROM project_3_team.tbl_job_posting;</span>
+<span id="cb23-110"><a href="#cb23-110" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-111"><a href="#cb23-111" aria-hidden="true" tabindex="-1"></a>ALTER TABLE tbl_onsite_flag ADD COLUMN onsite_desc varchar(20);</span>
+<span id="cb23-112"><a href="#cb23-112" aria-hidden="true" tabindex="-1"></a>UPDATE </span>
+<span id="cb23-113"><a href="#cb23-113" aria-hidden="true" tabindex="-1"></a>  tbl_onsite_flag </span>
+<span id="cb23-114"><a href="#cb23-114" aria-hidden="true" tabindex="-1"></a>SET onsite_desc = CASE onsite_flag_id </span>
+<span id="cb23-115"><a href="#cb23-115" aria-hidden="true" tabindex="-1"></a>                  WHEN 1 THEN "On_Site"</span>
+<span id="cb23-116"><a href="#cb23-116" aria-hidden="true" tabindex="-1"></a>                  WHEN 2 THEN "Hybrid"</span>
+<span id="cb23-117"><a href="#cb23-117" aria-hidden="true" tabindex="-1"></a>                  ELSE "Remote"</span>
+<span id="cb23-118"><a href="#cb23-118" aria-hidden="true" tabindex="-1"></a>                END;</span>
+<span id="cb23-119"><a href="#cb23-119" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-120"><a href="#cb23-120" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-121"><a href="#cb23-121" aria-hidden="true" tabindex="-1"></a>drop table if exists tbl_job_posting_skills_w_desc;</span>
+<span id="cb23-122"><a href="#cb23-122" aria-hidden="true" tabindex="-1"></a>create table tbl_job_posting_skills_w_desc (</span>
+<span id="cb23-123"><a href="#cb23-123" aria-hidden="true" tabindex="-1"></a>    posting_id varchar(20),</span>
+<span id="cb23-124"><a href="#cb23-124" aria-hidden="true" tabindex="-1"></a>    skills_id varchar(20),</span>
+<span id="cb23-125"><a href="#cb23-125" aria-hidden="true" tabindex="-1"></a>    skills_desc varchar(255)</span>
+<span id="cb23-126"><a href="#cb23-126" aria-hidden="true" tabindex="-1"></a>    );</span>
+<span id="cb23-127"><a href="#cb23-127" aria-hidden="true" tabindex="-1"></a>load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills_w_desc.txt'</span>
+<span id="cb23-128"><a href="#cb23-128" aria-hidden="true" tabindex="-1"></a>into table tbl_job_posting_skills_w_desc</span>
+<span id="cb23-129"><a href="#cb23-129" aria-hidden="true" tabindex="-1"></a>FIELDS TERMINATED BY '\t'</span>
+<span id="cb23-130"><a href="#cb23-130" aria-hidden="true" tabindex="-1"></a>ignore 1 rows;</span>
+<span id="cb23-131"><a href="#cb23-131" aria-hidden="true" tabindex="-1"></a>show warnings;   </span>
+<span id="cb23-132"><a href="#cb23-132" aria-hidden="true" tabindex="-1"></a>select * from tbl_job_posting_skills_w_desc;</span>
+<span id="cb23-133"><a href="#cb23-133" aria-hidden="true" tabindex="-1"></a>select count(*) from tbl_job_posting_skills_w_desc;</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p><em>1 Asaniczka. (2024). Data Science Job Postings &amp; Skills (2024) [Data set]. Kaggle. https://doi.org/10.34740/KAGGLE/DS/4407481</em></p>
-</section>
 </section>
 
 </main>

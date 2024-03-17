@@ -128,31 +128,3 @@ ignore 1 rows;
 show warnings;   
 select * from tbl_job_posting_skills_w_desc;
 select count(*) from tbl_job_posting_skills_w_desc;
-
-
-/* the following is not used - the skills_master caused errors in loading and links failed
-
-drop table if exists tbl_job_posting_skills;
-create table tbl_job_posting_skills(
-	posting_id varchar(8),
-    skill_id varchar(8)
-	);
-load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills3.txt'
-into table tbl_job_posting_skills
-FIELDS TERMINATED BY '\t'
-ignore 1 rows;
-select count(*) from tbl_job_posting_skills;
-select * from tbl_job_posting_skills;
-
-
-drop table if exists tbl_skills_master;
-create table tbl_skills_master(
-	skill_id varchar(20),
-    skill_desc varchar(255)
-	);
-load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_skills_master3.txt'
-into table tbl_skills_master
-ignore 1 rows;
-select * from tbl_skills_master;
-select count(*) from tbl_skills_master;
-*/

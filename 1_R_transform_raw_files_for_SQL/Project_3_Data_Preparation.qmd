@@ -15,9 +15,9 @@ To facilitate collaboration, we created two shared resources (a MySQL database i
 
 We obtained the dataset “Data Science Job Postings & Skills (2024)" from Kaggle(1). The data was originally sourced by Kaggle user “Asaniczka” by scraping publicly available LinkedIn job postings related to the term “data science”. It is presented as a raw data dump in three files, each with 12,218 rows, one per job posting:
 
-1. Job_summary: Two columns: URL and "job_summary," which appears to be the original formatted job posting data 
-2. Job_postings: 15 columns, one row per posting. Appears to have been derived from #1,
-3. Job_skills: Two columns, URL and comma-delimited list of skills found in the job listing, also appears to have been derived from #1 above
+1.  Job_summary: Two columns: URL and "job_summary," which appears to be the original formatted job posting data
+2.  Job_postings: 15 columns, one row per posting. Appears to have been derived from #1,
+3.  Job_skills: Two columns, URL and comma-delimited list of skills found in the job listing, also appears to have been derived from #1 above
 
 The team evaluated all tables and used #2 and #3 in this analysis, referred to below as **raw_job_postings.csv** and **raw_job_skills.csv**.
 
@@ -185,7 +185,7 @@ df_job_posting_work <- mutate(left_join(df_job_posting_work,
                                         by = "onsite_flag_desc"))
 
 
-str(df_title)
+head(df_title)
 
 str(df_job_posting_work)  
 
@@ -273,7 +273,7 @@ head(df_skills_melt, 5)
 
 ```
 
-Finally, we created the skills table and exported it:
+Finally, we created the skills table and exported it to a local Github repo (note that below code exports to working directory):
 
 ```{r skills_export}
 
@@ -313,22 +313,27 @@ write.csv(df_job_posting_skills_w_desc,"tbl_job_posting_skills_w_desc.csv", row.
 
 ## Import to MySQL:
 
-The attached SQL script was used to generate the tables and load the data. In loading the data, we found that two main tables still contained an excessive number of rogue commas and invalid characters, which R handled correctly in dataframes but MySQL could not import to tables.
+A SQL script was created to generate the tables and load the data (see from a local copy of our repo as MySQL could not import them directly from Github. In loading the data, we found that two main tables contained an excessive number of rogue commas and invalid characters, which R had handled in the dataframes but MySQL could not import to tables.
 
-To resolve: 1. All files were converted to tab-delimited before loading, to handle delimiter issues in text strings like job description or skill description
+To resolve:
 
-2.  The two main tables also required multiple iterations of removing invalid characters
+1. All files were converted to tab-delimited before loading, to handle delimiter issues in text strings like job description or skill description
 
-One error required us to denormalize the job posting skills table as a workaround due to time constraints: joins to the planned lookup table "skills_master" containing skill descriptions failed in testing and we found a large number of silent loading errors ("show warnings" command) that could not be resolved in time. Although the resulting job_posting_skills_w_desc table was not normalized, the functionality of the data was maintained.
+2.  We completed multiple iterations of removing invalid characters from the main tables
+
+During testing, we encountered one error that required us to denormalize the job posting skills table as a workaround due to time constraints: joins to the planned lookup table "skills_master" containing skill descriptions failed. In troubleshooting, we found a large number of silent errors had occurred during the load process (visible when using the "show warnings" command) that were partially resolved by seeking out more invalid characters. A workaround "job_posting_skills_w_desc table" was created, and while not normalized, the functionality of the data was maintained for analysis.
 
 Record counts and links were validated and the database released for analysis.
 
-#### SQL Script:
+``` default
 
-{r sql_load}
+Non-executable SQL script included below for reference only
 
+-- This script creates the nine tables and loads in data from .txt. files
 
+-- --------------------------------------------------------
 -- Create main tbl_job_posting: one row per job posting
+-- --------------------------------------------------------
 
 drop table if exists tbl_job_posting;
 create table tbl_job_posting (
@@ -352,8 +357,9 @@ select * from tbl_job_posting;
 select count(*) from tbl_job_posting;
 
 
+-- -----------------------------------------------------------
 -- Create all lookup tables
-
+-- -----------------------------------------------------------
 drop table if exists tbl_title;
 create table tbl_title (
 	title_id varchar(8) primary key,
@@ -454,7 +460,6 @@ show warnings;
 select * from tbl_job_posting_skills_w_desc;
 select count(*) from tbl_job_posting_skills_w_desc;
 
-
-
+```
 
 *1 Asaniczka. (2024). Data Science Job Postings & Skills (2024) \[Data set\]. Kaggle. https://doi.org/10.34740/KAGGLE/DS/4407481*

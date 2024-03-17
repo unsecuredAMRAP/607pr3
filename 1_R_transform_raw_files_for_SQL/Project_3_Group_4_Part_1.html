@@ -6,9 +6,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Team 4: Alahdab, Fox, Toybis">
 <meta name="dcterms.date" content="2024-03-17">
 
-<title>Project_3_Team_4_Part_1</title>
+<title>Project 3: Data Preparation</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -80,13 +81,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Project_3_Team_4_Part_1</h1>
+<h1 class="title">Project 3: Data Preparation</h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Team 4: Alahdab, Fox, Toybis </p>
+          </div>
+  </div>
     
     <div>
     <div class="quarto-title-meta-heading">Published</div>
@@ -105,10 +112,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <section id="introduction" class="level2">
 <h2 class="anchored" data-anchor-id="introduction">Introduction</h2>
+<p>Knowing which data skills are most important for success in the field of data science is key for the best education and preparation for a a fruitful career. Despite the abundance of learning resources and educational offerings for data science, or because of such abundance, it can be challenging to know where to start and which skills are most critical. To try to answer this question and fill this knowledge gap, we undertook an evaluation of a contemporary data on which skills were most in demand for data science jobs.</p>
+</section>
+<section id="process-and-data" class="level2">
+<h2 class="anchored" data-anchor-id="process-and-data">Process and Data</h2>
+<p>To facilitate collaboration, we created two shared resources (a MySQL database in Azure and a Github repository) and used email/Zoom for communication.</p>
+<p>We obtained the dataset “Data Science Job Postings &amp; Skills (2024)” from Kaggle(1). The data was originally sourced by Kaggle user “Asaniczka” by scraping publicly available LinkedIn job postings related to the term “data science”. It is presented as a raw data dump in three files, each with 12,218 rows, one per job posting:</p>
+<ol type="1">
+<li>Job_summary: Two columns: URL and “job_summary,” which appears to be the original formatted job posting data</li>
+<li>Job_postings: 15 columns, one row per posting. Appears to have been derived from #1,</li>
+<li>Job_skills: Two columns, URL and comma-delimited list of skills found in the job listing, also appears to have been derived from #1 above</li>
+</ol>
+<p>The team evaluated all tables and used #2 and #3 in this analysis, referred to below as <strong>raw_job_postings.csv</strong> and <strong>raw_job_skills.csv</strong>.</p>
+<p>Significant cleaning and transformation was required to import this data into MySQL in a normalized and useful format.</p>
+<p>We began with loading the libraries:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>output <span class="ot">=</span> <span class="cn">FALSE</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span> (tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span> (tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
 ✔ dplyr     1.1.4     ✔ readr     2.1.5
@@ -123,7 +142,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span> (dplyr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>#——– Import raw postings from github and transform to include necessary columns &amp; good names #——– note - these were lightly cleaned for rogue commas and invalid characters before import here</p>
+</section>
+<section id="data-preparation" class="level2">
+<h2 class="anchored" data-anchor-id="data-preparation">Data Preparation</h2>
+<p>The desired outcome of this process was a normalized MySQL database as follows:</p>
+<p><strong>Fig. 1 ER diagram of MySQL database</strong></p>
+<p><img src="part_1_erppng.png" class="img-fluid" width="600"></p>
+<section id="job-postings-table" class="level3">
+<h3 class="anchored" data-anchor-id="job-postings-table">1. Job Postings Table</h3>
+<p>Upon examination, the <strong>raw_job_postings</strong> file pictured in Fig. 1 below was in a wide tidy format, with one row per observation (job posting). The following issues were noted:</p>
+<ol type="1">
+<li><p>The primary key was the URL of the job posting, which was unwieldy and also proved to have a small number of duplicates (&lt;20).</p></li>
+<li><p>Several columns appeared to be for the author’s use in processing and were not meaningful for analysis</p></li>
+<li><p>Rogue commas and invalid characters caused repeated errors in the import process</p></li>
+<li><p>The table was denormalized, with values repeating across postings</p></li>
+</ol>
+<p>These and other minor issues needed to be resolved before moving the data into MySQL (see Fig. 2 and Fig. 3):</p>
+<p><strong>Fig. 2: Original File</strong></p>
+<p><img src="part_1_fig_1png.png" class="img-fluid"></p>
+<p><strong>Fig. 3: Format of Table with Keys in MySQL</strong></p>
+<p><img src="part_1_fig_2png.png" class="img-fluid" width="500"></p>
+<p>First, we imported the raw file and created a working dataframe of only necessary columns with revised names. (Note that one transformation was done during the evaluation process outside of R: the creation of a unique random number “id_simple” as a new primary key for job postings in lieu of URLs. All other keys were generated in R below.)</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>df_job_posting_raw <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://raw.githubusercontent.com/unsecuredAMRAP/607pr3/main/1_R_transform_raw_files_for_SQL/raw_job_postings.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
@@ -153,23 +192,425 @@ dttm  (1): last_processed_time
 <span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>         <span class="at">onsite_flag_desc =</span> job_type</span>
 <span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  )</span>
 <span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df_job_posting_raw)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_job_posting_work)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code># A tibble: 6 × 16
-  id_simple job_link         last_processed_time last_status got_summary got_ner
-      &lt;dbl&gt; &lt;chr&gt;            &lt;dttm&gt;              &lt;chr&gt;       &lt;lgl&gt;       &lt;lgl&gt;  
-1   6334263 https://www.lin… 2024-01-21 08:08:48 Finished N… TRUE        TRUE   
-2   6950875 https://www.lin… 2024-01-20 04:02:12 Finished N… TRUE        TRUE   
-3   7920777 https://www.lin… 2024-01-21 08:08:31 Finished N… TRUE        TRUE   
-4   5655137 https://www.lin… 2024-01-20 15:30:55 Finished N… TRUE        TRUE   
-5   2358397 https://www.lin… 2024-01-21 08:08:58 Finished N… TRUE        TRUE   
-6   9732870 https://www.lin… 2024-01-21 07:14:11 Finished N… TRUE        TRUE   
-# ℹ 10 more variables: is_being_worked &lt;lgl&gt;, job_title &lt;chr&gt;, company &lt;chr&gt;,
-#   job_location &lt;chr&gt;, first_seen &lt;chr&gt;, search_city &lt;chr&gt;,
-#   search_country &lt;chr&gt;, search_position &lt;chr&gt;, job_level &lt;chr&gt;,
-#   job_type &lt;chr&gt;</code></pre>
+<pre><code>tibble [12,217 × 12] (S3: tbl_df/tbl/data.frame)
+ $ posting_id      : num [1:12217] 6334263 6950875 7920777 5655137 2358397 ...
+ $ URL             : chr [1:12217] "https://www.linkedin.com/jobs/view/senior-machine-learning-engineer-at-jobs-for-humanity-3804053819" "https://www.linkedin.com/jobs/view/principal-software-engineer-ml-accelerators-at-aurora-3703455068" "https://www.linkedin.com/jobs/view/senior-etl-data-warehouse-specialist-at-adame-services-llc-3765023888" "https://www.linkedin.com/jobs/view/senior-data-warehouse-developer-architect-at-morph-enterprise-3794602483" ...
+ $ first_seen      : chr [1:12217] "1/14/2024" "1/14/2024" "1/14/2024" "1/12/2024" ...
+ $ last_processed  : POSIXct[1:12217], format: "2024-01-21 08:08:48" "2024-01-20 04:02:12" ...
+ $ title_desc      : chr [1:12217] "Senior Machine Learning Engineer" "Principal Software Engineer, ML Accelerators" "Senior ETL Data Warehouse Specialist" "Senior Data Warehouse Developer / Architect" ...
+ $ company_desc    : chr [1:12217] "Jobs for Humanity" "Aurora" "Adame Services LLC" "Morph Enterprise" ...
+ $ location_raw    : chr [1:12217] "New Haven, CT" "San Francisco, CA" "New York, NY" "Harrisburg, PA" ...
+ $ city_desc       : chr [1:12217] "East Haven" "El Cerrito" "Middletown" "Lebanon" ...
+ $ country_desc    : chr [1:12217] "United States" "United States" "United States" "United States" ...
+ $ search_pos_desc : chr [1:12217] "Agricultural-Research Engineer" "Set-Key Driver" "Technical Support Specialist" "Architect" ...
+ $ job_level_desc  : chr [1:12217] "Mid senior" "Mid senior" "Associate" "Mid senior" ...
+ $ onsite_flag_desc: chr [1:12217] "Onsite" "Onsite" "Onsite" "Onsite" ...</code></pre>
 </div>
 </div>
+<p>This clean, tidy dataset was then normalized for MySQL by creating keys and lookup tables for values that repeat across postings.</p>
+<p>Normalizing data supports data integrity and ease of maintenance: for example, renaming job levels or adding new data elements about companies would only need a single edit to a lookup table instead of across all tables where those data elements appear.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-------- Create all lookup tables and unique keys for each, add key to job_postings table</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Title</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>df_title <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(title_desc) </span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>df_title <span class="ot">&lt;-</span> df_title <span class="sc">%&gt;%</span> </span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">title_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_title))</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>df_title <span class="ot">&lt;-</span> df_title[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,df_title,<span class="at">by =</span> <span class="st">"title_desc"</span>))</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Company</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>df_company <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(company_desc) </span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>df_company <span class="ot">&lt;-</span> df_company <span class="sc">%&gt;%</span> </span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">company_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_company))</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a>df_company <span class="ot">&lt;-</span> df_company[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>                                        df_company,</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"company_desc"</span>))</span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a><span class="co"># City</span></span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>df_city <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(city_desc) </span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>df_city <span class="ot">&lt;-</span> df_city <span class="sc">%&gt;%</span> </span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">city_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_city))</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>df_city <span class="ot">&lt;-</span> df_city[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,</span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>                                        df_city,</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"city_desc"</span>))</span>
+<span id="cb8-39"><a href="#cb8-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-40"><a href="#cb8-40" aria-hidden="true" tabindex="-1"></a><span class="co"># country</span></span>
+<span id="cb8-41"><a href="#cb8-41" aria-hidden="true" tabindex="-1"></a>df_country <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-42"><a href="#cb8-42" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(country_desc) </span>
+<span id="cb8-43"><a href="#cb8-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-44"><a href="#cb8-44" aria-hidden="true" tabindex="-1"></a>df_country <span class="ot">&lt;-</span> df_country <span class="sc">%&gt;%</span> </span>
+<span id="cb8-45"><a href="#cb8-45" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">country_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_country))</span>
+<span id="cb8-46"><a href="#cb8-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-47"><a href="#cb8-47" aria-hidden="true" tabindex="-1"></a>df_country <span class="ot">&lt;-</span> df_country[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-48"><a href="#cb8-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-49"><a href="#cb8-49" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,</span>
+<span id="cb8-50"><a href="#cb8-50" aria-hidden="true" tabindex="-1"></a>                                        df_country,</span>
+<span id="cb8-51"><a href="#cb8-51" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"country_desc"</span>))</span>
+<span id="cb8-52"><a href="#cb8-52" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-53"><a href="#cb8-53" aria-hidden="true" tabindex="-1"></a><span class="co"># search_position (appears to group job titles)</span></span>
+<span id="cb8-54"><a href="#cb8-54" aria-hidden="true" tabindex="-1"></a>df_search_pos <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-55"><a href="#cb8-55" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(search_pos_desc) </span>
+<span id="cb8-56"><a href="#cb8-56" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-57"><a href="#cb8-57" aria-hidden="true" tabindex="-1"></a>df_search_pos <span class="ot">&lt;-</span> df_search_pos <span class="sc">%&gt;%</span> </span>
+<span id="cb8-58"><a href="#cb8-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">search_pos_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_search_pos))</span>
+<span id="cb8-59"><a href="#cb8-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-60"><a href="#cb8-60" aria-hidden="true" tabindex="-1"></a>df_search_pos <span class="ot">&lt;-</span> df_search_pos[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-61"><a href="#cb8-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-62"><a href="#cb8-62" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,</span>
+<span id="cb8-63"><a href="#cb8-63" aria-hidden="true" tabindex="-1"></a>                                        df_search_pos,</span>
+<span id="cb8-64"><a href="#cb8-64" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"search_pos_desc"</span>))</span>
+<span id="cb8-65"><a href="#cb8-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-66"><a href="#cb8-66" aria-hidden="true" tabindex="-1"></a><span class="co"># job_level</span></span>
+<span id="cb8-67"><a href="#cb8-67" aria-hidden="true" tabindex="-1"></a>df_job_level <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-68"><a href="#cb8-68" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(job_level_desc) </span>
+<span id="cb8-69"><a href="#cb8-69" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-70"><a href="#cb8-70" aria-hidden="true" tabindex="-1"></a>df_job_level <span class="ot">&lt;-</span> df_job_level <span class="sc">%&gt;%</span> </span>
+<span id="cb8-71"><a href="#cb8-71" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">job_level_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_job_level))</span>
+<span id="cb8-72"><a href="#cb8-72" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-73"><a href="#cb8-73" aria-hidden="true" tabindex="-1"></a>df_job_level <span class="ot">&lt;-</span> df_job_level[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-74"><a href="#cb8-74" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-75"><a href="#cb8-75" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,</span>
+<span id="cb8-76"><a href="#cb8-76" aria-hidden="true" tabindex="-1"></a>                                        df_job_level,</span>
+<span id="cb8-77"><a href="#cb8-77" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"job_level_desc"</span>))</span>
+<span id="cb8-78"><a href="#cb8-78" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-79"><a href="#cb8-79" aria-hidden="true" tabindex="-1"></a><span class="co"># onsite_flag</span></span>
+<span id="cb8-80"><a href="#cb8-80" aria-hidden="true" tabindex="-1"></a>df_onsite_flag <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb8-81"><a href="#cb8-81" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(onsite_flag_desc) </span>
+<span id="cb8-82"><a href="#cb8-82" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-83"><a href="#cb8-83" aria-hidden="true" tabindex="-1"></a>df_onsite_flag <span class="ot">&lt;-</span> df_onsite_flag <span class="sc">%&gt;%</span> </span>
+<span id="cb8-84"><a href="#cb8-84" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">onsite_flag_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_onsite_flag))</span>
+<span id="cb8-85"><a href="#cb8-85" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-86"><a href="#cb8-86" aria-hidden="true" tabindex="-1"></a>df_onsite_flag <span class="ot">&lt;-</span> df_onsite_flag[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb8-87"><a href="#cb8-87" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-88"><a href="#cb8-88" aria-hidden="true" tabindex="-1"></a>df_job_posting_work <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_job_posting_work,</span>
+<span id="cb8-89"><a href="#cb8-89" aria-hidden="true" tabindex="-1"></a>                                        df_onsite_flag,</span>
+<span id="cb8-90"><a href="#cb8-90" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"onsite_flag_desc"</span>))</span>
+<span id="cb8-91"><a href="#cb8-91" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-92"><a href="#cb8-92" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-93"><a href="#cb8-93" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_title)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>tibble [6,484 × 2] (S3: tbl_df/tbl/data.frame)
+ $ title_id  : int [1:6484] 1 2 3 4 5 6 7 8 9 10 ...
+ $ title_desc: chr [1:6484] "Senior Machine Learning Engineer" "Principal Software Engineer, ML Accelerators" "Senior ETL Data Warehouse Specialist" "Senior Data Warehouse Developer / Architect" ...</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_job_posting_work)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>tibble [12,217 × 19] (S3: tbl_df/tbl/data.frame)
+ $ posting_id      : num [1:12217] 6334263 6950875 7920777 5655137 2358397 ...
+ $ URL             : chr [1:12217] "https://www.linkedin.com/jobs/view/senior-machine-learning-engineer-at-jobs-for-humanity-3804053819" "https://www.linkedin.com/jobs/view/principal-software-engineer-ml-accelerators-at-aurora-3703455068" "https://www.linkedin.com/jobs/view/senior-etl-data-warehouse-specialist-at-adame-services-llc-3765023888" "https://www.linkedin.com/jobs/view/senior-data-warehouse-developer-architect-at-morph-enterprise-3794602483" ...
+ $ first_seen      : chr [1:12217] "1/14/2024" "1/14/2024" "1/14/2024" "1/12/2024" ...
+ $ last_processed  : POSIXct[1:12217], format: "2024-01-21 08:08:48" "2024-01-20 04:02:12" ...
+ $ title_desc      : chr [1:12217] "Senior Machine Learning Engineer" "Principal Software Engineer, ML Accelerators" "Senior ETL Data Warehouse Specialist" "Senior Data Warehouse Developer / Architect" ...
+ $ company_desc    : chr [1:12217] "Jobs for Humanity" "Aurora" "Adame Services LLC" "Morph Enterprise" ...
+ $ location_raw    : chr [1:12217] "New Haven, CT" "San Francisco, CA" "New York, NY" "Harrisburg, PA" ...
+ $ city_desc       : chr [1:12217] "East Haven" "El Cerrito" "Middletown" "Lebanon" ...
+ $ country_desc    : chr [1:12217] "United States" "United States" "United States" "United States" ...
+ $ search_pos_desc : chr [1:12217] "Agricultural-Research Engineer" "Set-Key Driver" "Technical Support Specialist" "Architect" ...
+ $ job_level_desc  : chr [1:12217] "Mid senior" "Mid senior" "Associate" "Mid senior" ...
+ $ onsite_flag_desc: chr [1:12217] "Onsite" "Onsite" "Onsite" "Onsite" ...
+ $ title_id        : int [1:12217] 1 2 3 4 5 6 7 8 9 10 ...
+ $ company_id      : int [1:12217] 1 2 3 4 5 6 1 1 7 8 ...
+ $ city_id         : int [1:12217] 1 2 3 4 5 6 7 8 9 10 ...
+ $ country_id      : int [1:12217] 1 1 1 1 1 1 1 1 1 1 ...
+ $ search_pos_id   : int [1:12217] 1 2 3 4 5 6 7 4 8 9 ...
+ $ job_level_id    : int [1:12217] 1 1 2 1 1 1 1 1 1 1 ...
+ $ onsite_flag_id  : int [1:12217] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+</div>
+</div>
+<p>With the lookup tables created and all the keys now in the working copy of the table, we removed all the repeating values and were left with the final job posting table for MySQL:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create job_posting normalized table with keys</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>df_job_posting <span class="ot">&lt;-</span> df_job_posting_work <span class="sc">%&gt;%</span> </span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(posting_id,</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>         URL,</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>         first_seen,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>         last_processed,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>         title_id,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>         company_id,</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>         location_raw,</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>         city_id,</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>         country_id,</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>         search_pos_id,</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>         job_level_id,</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>         onsite_flag_id</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>         )</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_job_posting)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>tibble [12,217 × 12] (S3: tbl_df/tbl/data.frame)
+ $ posting_id    : num [1:12217] 6334263 6950875 7920777 5655137 2358397 ...
+ $ URL           : chr [1:12217] "https://www.linkedin.com/jobs/view/senior-machine-learning-engineer-at-jobs-for-humanity-3804053819" "https://www.linkedin.com/jobs/view/principal-software-engineer-ml-accelerators-at-aurora-3703455068" "https://www.linkedin.com/jobs/view/senior-etl-data-warehouse-specialist-at-adame-services-llc-3765023888" "https://www.linkedin.com/jobs/view/senior-data-warehouse-developer-architect-at-morph-enterprise-3794602483" ...
+ $ first_seen    : chr [1:12217] "1/14/2024" "1/14/2024" "1/14/2024" "1/12/2024" ...
+ $ last_processed: POSIXct[1:12217], format: "2024-01-21 08:08:48" "2024-01-20 04:02:12" ...
+ $ title_id      : int [1:12217] 1 2 3 4 5 6 7 8 9 10 ...
+ $ company_id    : int [1:12217] 1 2 3 4 5 6 1 1 7 8 ...
+ $ location_raw  : chr [1:12217] "New Haven, CT" "San Francisco, CA" "New York, NY" "Harrisburg, PA" ...
+ $ city_id       : int [1:12217] 1 2 3 4 5 6 7 8 9 10 ...
+ $ country_id    : int [1:12217] 1 1 1 1 1 1 1 1 1 1 ...
+ $ search_pos_id : int [1:12217] 1 2 3 4 5 6 7 4 8 9 ...
+ $ job_level_id  : int [1:12217] 1 1 2 1 1 1 1 1 1 1 ...
+ $ onsite_flag_id: int [1:12217] 1 1 1 1 1 1 1 1 1 1 ...</code></pre>
+</div>
+</div>
+</section>
+<section id="skills-by-job-posting" class="level3">
+<h3 class="anchored" data-anchor-id="skills-by-job-posting">2. Skills by Job Posting</h3>
+<p>The <strong>raw_job_postings_skills</strong> file pictured in Fig. 4 below was in a tidy format, with one row per observation (in this case, job posting/skills list pairs).</p>
+<p>However, although tidy, it required significant cleaning, transformation, and tidying in order to be used for analysis:</p>
+<ol type="1">
+<li>The primary key was the URL of the job posting</li>
+<li>Skills for each posting were listed in concatenated strings of free text</li>
+<li>These strings contained many invalid characters that would cause import errors in MySQL</li>
+</ol>
+<p><strong>Fig. 4: Original Skills by Posting File</strong></p>
+<p><img src="part_1_fig_3png.png" class="img-fluid"></p>
+<p>Our first step was to parse the skills string into columns:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-------- Import table and parse comma delimited list of skills into columns: </span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>df_job_skills_raw <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"https://raw.githubusercontent.com/unsecuredAMRAP/607pr3/main/1_R_transform_raw_files_for_SQL/raw_job_skills2.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 12217 Columns: 3
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (2): job_link, job_skills
+dbl (1): id_simple
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>df_job_skills_raw <span class="ot">&lt;-</span> df_job_skills_raw  <span class="sc">%&gt;%</span>  </span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">posting_id =</span> id_simple, <span class="at">URL =</span> job_link)</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co">#NOTE we capped this at 200 skills per posting; 32 positions had more than 200</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>df_skills_work <span class="ot">&lt;-</span> df_job_skills_raw <span class="sc">%&gt;%</span> </span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">separate_wider_delim</span>(job_skills,</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>                    <span class="at">delim=</span><span class="st">","</span>,</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>                    <span class="at">names=</span><span class="fu">c</span>(<span class="st">"Skill_1"</span>,<span class="st">"Skill_2"</span>,<span class="st">"Skill_3"</span>,<span class="st">"Skill_4"</span>,<span class="st">"Skill_5"</span>, <span class="st">"Skill_6"</span>,<span class="st">"Skill_7"</span>,<span class="st">"Skill_8"</span>,<span class="st">"Skill_9"</span>,<span class="st">"Skill_10"</span>, <span class="st">"Skill_11"</span>,<span class="st">"Skill_12"</span>,<span class="st">"Skill_13"</span>,<span class="st">"Skill_14"</span>,<span class="st">"Skill_15"</span>, <span class="st">"Skill_16"</span>,<span class="st">"Skill_17"</span>,<span class="st">"Skill_18"</span>,<span class="st">"Skill_19"</span>,<span class="st">"Skill_20"</span>, <span class="st">"Skill_21"</span>,<span class="st">"Skill_22"</span>,<span class="st">"Skill_23"</span>,<span class="st">"Skill_24"</span>,<span class="st">"Skill_25"</span>, <span class="st">"Skill_26"</span>,<span class="st">"Skill_27"</span>,<span class="st">"Skill_28"</span>,<span class="st">"Skill_29"</span>,<span class="st">"Skill_30"</span>, <span class="st">"Skill_31"</span>,<span class="st">"Skill_32"</span>,<span class="st">"Skill_33"</span>,<span class="st">"Skill_34"</span>,<span class="st">"Skill_35"</span>, <span class="st">"Skill_36"</span>,<span class="st">"Skill_37"</span>,<span class="st">"Skill_38"</span>,<span class="st">"Skill_39"</span>,<span class="st">"Skill_40"</span>, <span class="st">"Skill_41"</span>,<span class="st">"Skill_42"</span>,<span class="st">"Skill_43"</span>,<span class="st">"Skill_44"</span>,<span class="st">"Skill_45"</span>, <span class="st">"Skill_46"</span>,<span class="st">"Skill_47"</span>,<span class="st">"Skill_48"</span>,<span class="st">"Skill_49"</span>,<span class="st">"Skill_50"</span>, <span class="st">"Skill_51"</span>,<span class="st">"Skill_52"</span>,<span class="st">"Skill_53"</span>,<span class="st">"Skill_54"</span>,<span class="st">"Skill_55"</span>, <span class="st">"Skill_56"</span>,<span class="st">"Skill_57"</span>,<span class="st">"Skill_58"</span>,<span class="st">"Skill_59"</span>,<span class="st">"Skill_60"</span>, <span class="st">"Skill_61"</span>,<span class="st">"Skill_62"</span>,<span class="st">"Skill_63"</span>,<span class="st">"Skill_64"</span>,<span class="st">"Skill_65"</span>, <span class="st">"Skill_66"</span>,<span class="st">"Skill_67"</span>,<span class="st">"Skill_68"</span>,<span class="st">"Skill_69"</span>,<span class="st">"Skill_70"</span>, <span class="st">"Skill_71"</span>,<span class="st">"Skill_72"</span>,<span class="st">"Skill_73"</span>,<span class="st">"Skill_74"</span>,<span class="st">"Skill_75"</span>, <span class="st">"Skill_76"</span>,<span class="st">"Skill_77"</span>,<span class="st">"Skill_78"</span>,<span class="st">"Skill_79"</span>,<span class="st">"Skill_80"</span>, <span class="st">"Skill_81"</span>,<span class="st">"Skill_82"</span>,<span class="st">"Skill_83"</span>,<span class="st">"Skill_84"</span>,<span class="st">"Skill_85"</span>, <span class="st">"Skill_86"</span>,<span class="st">"Skill_87"</span>,<span class="st">"Skill_88"</span>,<span class="st">"Skill_89"</span>,<span class="st">"Skill_90"</span>, <span class="st">"Skill_91"</span>,<span class="st">"Skill_92"</span>,<span class="st">"Skill_93"</span>,<span class="st">"Skill_94"</span>,<span class="st">"Skill_95"</span>, <span class="st">"Skill_96"</span>,<span class="st">"Skill_97"</span>,<span class="st">"Skill_98"</span>,<span class="st">"Skill_99"</span>,<span class="st">"Skill_100"</span>, <span class="st">"Skill_101"</span>,<span class="st">"Skill_102"</span>,<span class="st">"Skill_103"</span>,<span class="st">"Skill_104"</span>,<span class="st">"Skill_105"</span>, <span class="st">"Skill_106"</span>,<span class="st">"Skill_107"</span>,<span class="st">"Skill_108"</span>,<span class="st">"Skill_109"</span>,<span class="st">"Skill_110"</span>, <span class="st">"Skill_111"</span>,<span class="st">"Skill_112"</span>,<span class="st">"Skill_113"</span>,<span class="st">"Skill_114"</span>,<span class="st">"Skill_115"</span>, <span class="st">"Skill_116"</span>,<span class="st">"Skill_117"</span>,<span class="st">"Skill_118"</span>,<span class="st">"Skill_119"</span>,<span class="st">"Skill_120"</span>, <span class="st">"Skill_121"</span>,<span class="st">"Skill_122"</span>,<span class="st">"Skill_123"</span>,<span class="st">"Skill_124"</span>,<span class="st">"Skill_125"</span>, <span class="st">"Skill_126"</span>,<span class="st">"Skill_127"</span>,<span class="st">"Skill_128"</span>,<span class="st">"Skill_129"</span>,<span class="st">"Skill_130"</span>, <span class="st">"Skill_131"</span>,<span class="st">"Skill_132"</span>,<span class="st">"Skill_133"</span>,<span class="st">"Skill_134"</span>,<span class="st">"Skill_135"</span>, <span class="st">"Skill_136"</span>,<span class="st">"Skill_137"</span>,<span class="st">"Skill_138"</span>,<span class="st">"Skill_139"</span>,<span class="st">"Skill_140"</span>, <span class="st">"Skill_141"</span>,<span class="st">"Skill_142"</span>,<span class="st">"Skill_143"</span>,<span class="st">"Skill_144"</span>,<span class="st">"Skill_145"</span>, <span class="st">"Skill_146"</span>,<span class="st">"Skill_147"</span>,<span class="st">"Skill_148"</span>,<span class="st">"Skill_149"</span>,<span class="st">"Skill_150"</span>, <span class="st">"Skill_151"</span>,<span class="st">"Skill_152"</span>,<span class="st">"Skill_153"</span>,<span class="st">"Skill_154"</span>,<span class="st">"Skill_155"</span>, <span class="st">"Skill_156"</span>,<span class="st">"Skill_157"</span>,<span class="st">"Skill_158"</span>,<span class="st">"Skill_159"</span>,<span class="st">"Skill_160"</span>, <span class="st">"Skill_161"</span>,<span class="st">"Skill_162"</span>,<span class="st">"Skill_163"</span>,<span class="st">"Skill_164"</span>,<span class="st">"Skill_165"</span>, <span class="st">"Skill_166"</span>,<span class="st">"Skill_167"</span>,<span class="st">"Skill_168"</span>,<span class="st">"Skill_169"</span>,<span class="st">"Skill_170"</span>, <span class="st">"Skill_171"</span>,<span class="st">"Skill_172"</span>,<span class="st">"Skill_173"</span>,<span class="st">"Skill_174"</span>,<span class="st">"Skill_175"</span>, <span class="st">"Skill_176"</span>,<span class="st">"Skill_177"</span>,<span class="st">"Skill_178"</span>,<span class="st">"Skill_179"</span>,<span class="st">"Skill_180"</span>, <span class="st">"Skill_181"</span>,<span class="st">"Skill_182"</span>,<span class="st">"Skill_183"</span>,<span class="st">"Skill_184"</span>,<span class="st">"Skill_185"</span>, <span class="st">"Skill_186"</span>,<span class="st">"Skill_187"</span>,<span class="st">"Skill_188"</span>,<span class="st">"Skill_189"</span>,<span class="st">"Skill_190"</span>, <span class="st">"Skill_191"</span>,<span class="st">"Skill_192"</span>,<span class="st">"Skill_193"</span>,<span class="st">"Skill_194"</span>,<span class="st">"Skill_195"</span>, <span class="st">"Skill_196"</span>,<span class="st">"Skill_197"</span>,<span class="st">"Skill_198"</span>,<span class="st">"Skill_199"</span>,<span class="st">"Skill_200"</span> ), </span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>      <span class="at">too_many =</span> <span class="st">"drop"</span>, </span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>      <span class="at">too_few =</span> <span class="st">"align_start"</span>)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>df_skills_work<span class="sc">$</span>posting_id <span class="ot">&lt;-</span> <span class="fu">as.character</span>(df_skills_work<span class="sc">$</span>posting_id)</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df_skills_work)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>tibble [12,217 × 202] (S3: tbl_df/tbl/data.frame)
+ $ posting_id: chr [1:12217] "6334263" "6950875" "7920777" "5655137" ...
+ $ URL       : chr [1:12217] "https://www.linkedin.com/jobs/view/senior-machine-learning-engineer-at-jobs-for-humanity-3804053819" "https://www.linkedin.com/jobs/view/principal-software-engineer-ml-accelerators-at-aurora-3703455068" "https://www.linkedin.com/jobs/view/senior-etl-data-warehouse-specialist-at-adame-services-llc-3765023888" "https://www.linkedin.com/jobs/view/senior-data-warehouse-developer-architect-at-morph-enterprise-3794602483" ...
+ $ Skill_1   : chr [1:12217] "Machine Learning" "C++" "ETL" "Data Lakes" ...
+ $ Skill_2   : chr [1:12217] " Programming" " Python" " Data Integration" " Data Bricks" ...
+ $ Skill_3   : chr [1:12217] " Python" " PyTorch" " Data Transformation" " Azure Data Factory Pipelines" ...
+ $ Skill_4   : chr [1:12217] " Scala" " TensorFlow" " Data Warehousing" " Spark" ...
+ $ Skill_5   : chr [1:12217] " Java" " MXNet" " Business Intelligence" " Python" ...
+ $ Skill_6   : chr [1:12217] " Data Engineering" " CUDA" " Data Modeling" " Business Intelligence" ...
+ $ Skill_7   : chr [1:12217] " Distributed Computing" " OpenCL" " Data Architecture" " Data Warehouse" ...
+ $ Skill_8   : chr [1:12217] " Statistical Modeling" " OpenVX" " Data Quality" " SQL Server" ...
+ $ Skill_9   : chr [1:12217] " Optimization" " Halide" " Data Validation" " Azure" ...
+ $ Skill_10  : chr [1:12217] " Data Pipelines" " SIMD programming models" " Data Cleansing" " ETL/ELT" ...
+ $ Skill_11  : chr [1:12217] " Cloud Computing" " MLspecific accelerators" " Performance Optimization" " SQL Server Integration Services" ...
+ $ Skill_12  : chr [1:12217] " DevOps" " Linux/unix environments" " Performance Tuning" " TSQL" ...
+ $ Skill_13  : chr [1:12217] " Software Development" " Deep learning frameworks" " Troubleshooting" " Data Formatting" ...
+ $ Skill_14  : chr [1:12217] " Data Gathering" " Computer vision deep learning models" " Documentation" " Data Capture" ...
+ $ Skill_15  : chr [1:12217] " Data Preparation" " ML software and hardware technology" " Reporting" " Data Search" ...
+ $ Skill_16  : chr [1:12217] " Data Visualization" " Inference on edge platforms" " Data Analysis" " Data Retrieval" ...
+ $ Skill_17  : chr [1:12217] " Machine Learning Frameworks" " Cloud ML training pipelines" " Collaboration" " Data Extraction" ...
+ $ Skill_18  : chr [1:12217] " scikitlearn" " HPC experience" " Communication" " Data Classification" ...
+ $ Skill_19  : chr [1:12217] " PyTorch" " Performance troubleshooting" " SQL" " Information Filtering" ...
+ $ Skill_20  : chr [1:12217] " Dask" " Profiling" " Informatica" " Data Mining Architectures" ...
+ $ Skill_21  : chr [1:12217] " Spark" " Roofline model" " Talend" " Modeling Standards" ...
+ $ Skill_22  : chr [1:12217] " TensorFlow" " Analytical skills" " Apache NiFi" " Reporting" ...
+ $ Skill_23  : chr [1:12217] " Distributed File Systems" " Communication skills" " AWS Redshift" " Data Analysis Methodologies" ...
+ $ Skill_24  : chr [1:12217] " Multi node Database Paradigms" NA " Azure SQL Data Warehouse" " Data Engineering" ...
+ $ Skill_25  : chr [1:12217] " Open Source ML Software" NA " Financial/Banking" " Database File Systems Optimization" ...
+ $ Skill_26  : chr [1:12217] " Responsible AI" NA " CloudBased Data Platforms" " API's" ...
+ $ Skill_27  : chr [1:12217] " Explainable AI" NA " Regulatory Compliance" " Analytics as a Service" ...
+ $ Skill_28  : chr [1:12217] NA NA NA " Relational Databases" ...
+ $ Skill_29  : chr [1:12217] NA NA NA " Dimensional Databases" ...
+ $ Skill_30  : chr [1:12217] NA NA NA " Entity Relationships" ...
+ $ Skill_31  : chr [1:12217] NA NA NA " Data Warehousing" ...
+ $ Skill_32  : chr [1:12217] NA NA NA " Facts" ...
+ $ Skill_33  : chr [1:12217] NA NA NA " Dimensions" ...
+ $ Skill_34  : chr [1:12217] NA NA NA " Star Schema Concepts" ...
+ $ Skill_35  : chr [1:12217] NA NA NA " Star Schema Terminology" ...
+ $ Skill_36  : chr [1:12217] NA NA NA " Project Management" ...
+ $ Skill_37  : chr [1:12217] NA NA NA " Organizational Skills" ...
+ $ Skill_38  : chr [1:12217] NA NA NA " Collaboration" ...
+ $ Skill_39  : chr [1:12217] NA NA NA " Communication" ...
+ $ Skill_40  : chr [1:12217] NA NA NA " Technical Presentaion Skills" ...
+ $ Skill_41  : chr [1:12217] NA NA NA " 12+ Years of Relevant Experience" ...
+ $ Skill_42  : chr [1:12217] NA NA NA NA ...
+ $ Skill_43  : chr [1:12217] NA NA NA NA ...
+ $ Skill_44  : chr [1:12217] NA NA NA NA ...
+ $ Skill_45  : chr [1:12217] NA NA NA NA ...
+ $ Skill_46  : chr [1:12217] NA NA NA NA ...
+ $ Skill_47  : chr [1:12217] NA NA NA NA ...
+ $ Skill_48  : chr [1:12217] NA NA NA NA ...
+ $ Skill_49  : chr [1:12217] NA NA NA NA ...
+ $ Skill_50  : chr [1:12217] NA NA NA NA ...
+ $ Skill_51  : chr [1:12217] NA NA NA NA ...
+ $ Skill_52  : chr [1:12217] NA NA NA NA ...
+ $ Skill_53  : chr [1:12217] NA NA NA NA ...
+ $ Skill_54  : chr [1:12217] NA NA NA NA ...
+ $ Skill_55  : chr [1:12217] NA NA NA NA ...
+ $ Skill_56  : chr [1:12217] NA NA NA NA ...
+ $ Skill_57  : chr [1:12217] NA NA NA NA ...
+ $ Skill_58  : chr [1:12217] NA NA NA NA ...
+ $ Skill_59  : chr [1:12217] NA NA NA NA ...
+ $ Skill_60  : chr [1:12217] NA NA NA NA ...
+ $ Skill_61  : chr [1:12217] NA NA NA NA ...
+ $ Skill_62  : chr [1:12217] NA NA NA NA ...
+ $ Skill_63  : chr [1:12217] NA NA NA NA ...
+ $ Skill_64  : chr [1:12217] NA NA NA NA ...
+ $ Skill_65  : chr [1:12217] NA NA NA NA ...
+ $ Skill_66  : chr [1:12217] NA NA NA NA ...
+ $ Skill_67  : chr [1:12217] NA NA NA NA ...
+ $ Skill_68  : chr [1:12217] NA NA NA NA ...
+ $ Skill_69  : chr [1:12217] NA NA NA NA ...
+ $ Skill_70  : chr [1:12217] NA NA NA NA ...
+ $ Skill_71  : chr [1:12217] NA NA NA NA ...
+ $ Skill_72  : chr [1:12217] NA NA NA NA ...
+ $ Skill_73  : chr [1:12217] NA NA NA NA ...
+ $ Skill_74  : chr [1:12217] NA NA NA NA ...
+ $ Skill_75  : chr [1:12217] NA NA NA NA ...
+ $ Skill_76  : chr [1:12217] NA NA NA NA ...
+ $ Skill_77  : chr [1:12217] NA NA NA NA ...
+ $ Skill_78  : chr [1:12217] NA NA NA NA ...
+ $ Skill_79  : chr [1:12217] NA NA NA NA ...
+ $ Skill_80  : chr [1:12217] NA NA NA NA ...
+ $ Skill_81  : chr [1:12217] NA NA NA NA ...
+ $ Skill_82  : chr [1:12217] NA NA NA NA ...
+ $ Skill_83  : chr [1:12217] NA NA NA NA ...
+ $ Skill_84  : chr [1:12217] NA NA NA NA ...
+ $ Skill_85  : chr [1:12217] NA NA NA NA ...
+ $ Skill_86  : chr [1:12217] NA NA NA NA ...
+ $ Skill_87  : chr [1:12217] NA NA NA NA ...
+ $ Skill_88  : chr [1:12217] NA NA NA NA ...
+ $ Skill_89  : chr [1:12217] NA NA NA NA ...
+ $ Skill_90  : chr [1:12217] NA NA NA NA ...
+ $ Skill_91  : chr [1:12217] NA NA NA NA ...
+ $ Skill_92  : chr [1:12217] NA NA NA NA ...
+ $ Skill_93  : chr [1:12217] NA NA NA NA ...
+ $ Skill_94  : chr [1:12217] NA NA NA NA ...
+ $ Skill_95  : chr [1:12217] NA NA NA NA ...
+ $ Skill_96  : chr [1:12217] NA NA NA NA ...
+ $ Skill_97  : chr [1:12217] NA NA NA NA ...
+  [list output truncated]</code></pre>
+</div>
+</div>
+<p>We needed to transform this very wide dataframe to a long tidy format for analysis by melting these repeating data elements into rows. We also cleaned those values by removing white spaces in this step.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co">#-------- Melt skills and remove white spaces</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>df_skills_melt <span class="ot">&lt;-</span> df_skills_work  <span class="sc">%&gt;%</span>  </span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span><span class="fu">c</span>(posting_id, URL), <span class="at">names_to =</span> <span class="st">"skill_order"</span>, <span class="at">values_to =</span> <span class="st">"skill_desc"</span>, <span class="at">values_drop_na =</span> <span class="cn">TRUE</span>,)</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>df_skills_melt<span class="sc">$</span>skill_desc <span class="ot">&lt;-</span> <span class="fu">str_trim</span>(df_skills_melt<span class="sc">$</span>skill_desc)</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>df_skills_melt <span class="ot">&lt;-</span> df_skills_melt[,<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">4</span>)]</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df_skills_melt, <span class="dv">5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 5 × 2
+  posting_id skill_desc      
+  &lt;chr&gt;      &lt;chr&gt;           
+1 6334263    Machine Learning
+2 6334263    Programming     
+3 6334263    Python          
+4 6334263    Scala           
+5 6334263    Java            </code></pre>
+</div>
+</div>
+<p>Finally, we created the skills table and exported it:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create skills lookup table (note: this was not used in MySQL due to unresolved errors)</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>df_skills_master <span class="ot">&lt;-</span> df_skills_melt <span class="sc">%&gt;%</span> </span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(skill_desc)</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>df_skills_master <span class="ot">&lt;-</span> df_skills_master <span class="sc">%&gt;%</span> </span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">skill_id =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(df_skills_master))</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>df_skills_master <span class="ot">&lt;-</span> df_skills_master[,<span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)]</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Create job posting skills with desc table </span></span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>df_job_posting_skills_w_desc <span class="ot">&lt;-</span> <span class="fu">mutate</span>(<span class="fu">left_join</span>(df_skills_melt,</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>                                        df_skills_master,</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>                                        <span class="at">by =</span> <span class="st">"skill_desc"</span>))</span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>df_job_posting_skills_w_desc <span class="ot">&lt;-</span> df_job_posting_skills_w_desc[,<span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">3</span>,<span class="dv">2</span>)]</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df_job_posting_skills_w_desc)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 3
+  posting_id skill_id skill_desc      
+  &lt;chr&gt;         &lt;int&gt; &lt;chr&gt;           
+1 6334263           1 Machine Learning
+2 6334263           2 Programming     
+3 6334263           3 Python          
+4 6334263           4 Scala           
+5 6334263           5 Java            
+6 6334263           6 Data Engineering</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co">#----------- Write all to .csv for SQL </span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_city,<span class="st">"tbl_city.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_company,<span class="st">"tbl_company.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_country,<span class="st">"tbl_country.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_job_level,<span class="st">"tbl_job_level.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_job_posting,<span class="st">"tbl_job_posting.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_onsite_flag,<span class="st">"tbl_onsite_flag.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_search_pos,<span class="st">"tbl_search_pos.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_title,<span class="st">"tbl_title.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(df_job_posting_skills_w_desc,<span class="st">"tbl_job_posting_skills_w_desc.csv"</span>, <span class="at">row.names=</span><span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="import-to-mysql" class="level2">
+<h2 class="anchored" data-anchor-id="import-to-mysql">Import to MySQL:</h2>
+<p>The attached SQL script was used to generate the tables and load the data. In loading the data, we found that two main tables still contained an excessive number of rogue commas and invalid characters, which R handled correctly in dataframes but MySQL could not import to tables.</p>
+<p>To resolve: 1. All files were converted to tab-delimited before loading, to handle delimiter issues in text strings like job description or skill description</p>
+<ol start="2" type="1">
+<li>The two main tables also required multiple iterations of removing invalid characters</li>
+</ol>
+<p>One error required us to denormalize the job posting skills table as a workaround due to time constraints: joins to the planned lookup table “skills_master” containing skill descriptions failed in testing and we found a large number of silent loading errors (“show warnings” command) that could not be resolved in time. Although the resulting job_posting_skills_w_desc table was not normalized, the functionality of the data was maintained.</p>
+<p>Record counts and links were validated and the database released for analysis.</p>
+<section id="sql-script" class="level4">
+<h4 class="anchored" data-anchor-id="sql-script">SQL Script:</h4>
+<p>{r sql_load}</p>
+<p>– Create main tbl_job_posting: one row per job posting</p>
+<p>drop table if exists tbl_job_posting; create table tbl_job_posting ( posting_id varchar(8) primary key, URL longtext, first_seen varchar(255), last_processed varchar(255), title_id varchar(8), company_id varchar(8), location_id varchar(8), city_id varchar(8), country_id varchar(8), search_pos_id varchar(8), job_level_id varchar(8), onsite_flag_id varchar(8) ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting.txt’ into table tbl_job_posting ignore 1 rows; select * from tbl_job_posting; select count(*) from tbl_job_posting;</p>
+<p>– Create all lookup tables</p>
+<p>drop table if exists tbl_title; create table tbl_title ( title_id varchar(8) primary key, title_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_title.txt’ into table tbl_title ignore 1 rows; select * from tbl_title; select count(*) from tbl_title;</p>
+<p>drop table if exists tbl_company; create table tbl_company ( company_id varchar(8) primary key, company_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_company.txt’ into table tbl_company ignore 1 rows; select * from tbl_company; select count(*) from tbl_company;</p>
+<p>drop table if exists tbl_city; create table tbl_city ( city_id varchar(8) primary key, city_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_city.txt’ into table tbl_city ignore 1 rows; select * from tbl_city; select count(*) from tbl_city;</p>
+<p>drop table if exists tbl_country; create table tbl_country ( country_id varchar(8) primary key, country_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_country.txt’ into table tbl_country ignore 1 rows; select * from tbl_country; select count(*) from tbl_country;</p>
+<p>drop table if exists tbl_search_position; create table tbl_search_position ( search_pos_id varchar(8) primary key, search_pos_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_search_pos.txt’ into table tbl_search_position ignore 1 rows; select * from tbl_search_position; select count(*) from tbl_search_position;</p>
+<p>drop table if exists tbl_job_level; create table tbl_job_level( job_level_id varchar(8) primary key, job_level_desc longtext ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_level.txt’ into table tbl_job_level ignore 1 rows; select * from tbl_job_level; select count(*) from tbl_job_level;</p>
+<p>drop table if exists tbl_onsite_flag; create table tbl_onsite_flag as SELECT distinct onsite_flag_id FROM project_3_team.tbl_job_posting;</p>
+<p>ALTER TABLE tbl_onsite_flag ADD COLUMN onsite_desc varchar(20); UPDATE tbl_onsite_flag SET onsite_desc = CASE onsite_flag_id WHEN 1 THEN “On_Site” WHEN 2 THEN “Hybrid” ELSE “Remote” END;</p>
+<p>drop table if exists tbl_job_posting_skills_w_desc; create table tbl_job_posting_skills_w_desc ( posting_id varchar(20), skills_id varchar(20), skills_desc varchar(255) ); load data local infile ‘C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills_w_desc.txt’ into table tbl_job_posting_skills_w_desc FIELDS TERMINATED BY ’ ignore 1 rows; show warnings;<br>
+select * from tbl_job_posting_skills_w_desc; select count(*) from tbl_job_posting_skills_w_desc;</p>
+<p><em>1 Asaniczka. (2024). Data Science Job Postings &amp; Skills (2024) [Data set]. Kaggle. https://doi.org/10.34740/KAGGLE/DS/4407481</em></p>
+</section>
 </section>
 
 </main>

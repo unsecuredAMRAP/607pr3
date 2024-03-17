@@ -1,26 +1,70 @@
 ---
-title: "Project_3_Team_4_Part_1"
+title: "Project 3: Data Preparation"
+author: "Team 4: Alahdab, Fox, Toybis"
 date: 3/17/2024
 format: html
 ---
 
 ## Introduction
 
+Knowing which data skills are most important for success in the field of data science is key for the best education and preparation for a a fruitful career. Despite the abundance of learning resources and educational offerings for data science, or because of such abundance, it can be challenging to know where to start and which skills are most critical. To try to answer this question and fill this knowledge gap, we undertook an evaluation of a contemporary data on which skills were most in demand for data science jobs.
 
+## Process and Data
 
-``` {r getdata}
-output = FALSE
+To facilitate collaboration, we created two shared resources (a MySQL database in Azure and a Github repository) and used email/Zoom for communication.
+
+We obtained the dataset “Data Science Job Postings & Skills (2024)" from Kaggle(1). The data was originally sourced by Kaggle user “Asaniczka” by scraping publicly available LinkedIn job postings related to the term “data science”. It is presented as a raw data dump in three files, each with 12,218 rows, one per job posting:
+
+1. Job_summary: Two columns: URL and "job_summary," which appears to be the original formatted job posting data 
+2. Job_postings: 15 columns, one row per posting. Appears to have been derived from #1,
+3. Job_skills: Two columns, URL and comma-delimited list of skills found in the job listing, also appears to have been derived from #1 above
+
+The team evaluated all tables and used #2 and #3 in this analysis, referred to below as **raw_job_postings.csv** and **raw_job_skills.csv**.
+
+Significant cleaning and transformation was required to import this data into MySQL in a normalized and useful format.
+
+We began with loading the libraries:
+
+```{r getdata}
 
 library (tidyverse)
 library (dplyr)
 
 ```
 
+## Data Preparation
 
-#-------- Import raw postings from github and transform to include necessary columns & good names
-#-------- note - these were lightly cleaned  for rogue commas and invalid characters before import here
+The desired outcome of this process was a normalized MySQL database as follows:
 
-``` {r import_raw}
+**Fig. 1 ER diagram of MySQL database**
+
+![](part_1_erppng.png){width="600"}
+
+### 1. Job Postings Table
+
+Upon examination, the **raw_job_postings** file pictured in Fig. 1 below was in a wide tidy format, with one row per observation (job posting). The following issues were noted:
+
+1.  The primary key was the URL of the job posting, which was unwieldy and also proved to have a small number of duplicates (\<20).
+
+2.  Several columns appeared to be for the author's use in processing and were not meaningful for analysis
+
+3.  Rogue commas and invalid characters caused repeated errors in the import process
+
+4.  The table was denormalized, with values repeating across postings
+
+These and other minor issues needed to be resolved before moving the data into MySQL (see Fig. 2 and Fig. 3):
+
+**Fig. 2: Original File**
+
+![](part_1_fig_1png.png)
+
+**Fig. 3: Format of Table with Keys in MySQL**
+
+![](part_1_fig_2png.png){width="500"}
+
+First, we imported the raw file and created a working dataframe of only necessary columns with revised names. (Note that one transformation was done during the evaluation process outside of R: the creation of a unique random number "id_simple" as a new primary key for job postings in lieu of URLs. All other keys were generated in R below.)
+
+```{r import_raw}
 
 df_job_posting_raw <- read_csv("https://raw.githubusercontent.com/unsecuredAMRAP/607pr3/main/1_R_transform_raw_files_for_SQL/raw_job_postings.csv")
 
@@ -39,9 +83,378 @@ df_job_posting_work <- df_job_posting_raw %>%
          onsite_flag_desc = job_type
   )
 
-head(df_job_posting_raw)
-
-
+str(df_job_posting_work)
 
 ```
 
+This clean, tidy dataset was then normalized for MySQL by creating keys and lookup tables for values that repeat across postings.
+
+Normalizing data supports data integrity and ease of maintenance: for example, renaming job levels or adding new data elements about companies would only need a single edit to a lookup table instead of across all tables where those data elements appear.
+
+```{r lookup_tables}
+
+#-------- Create all lookup tables and unique keys for each, add key to job_postings table
+
+# Title
+df_title <- df_job_posting_work %>% 
+  distinct(title_desc) 
+
+df_title <- df_title %>% 
+  mutate(title_id = 1:nrow(df_title))
+
+df_title <- df_title[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,df_title,by = "title_desc"))
+
+# Company
+df_company <- df_job_posting_work %>% 
+  distinct(company_desc) 
+
+df_company <- df_company %>% 
+  mutate(company_id = 1:nrow(df_company))
+
+df_company <- df_company[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,
+                                        df_company,
+                                        by = "company_desc"))
+
+# City
+df_city <- df_job_posting_work %>% 
+  distinct(city_desc) 
+
+df_city <- df_city %>% 
+  mutate(city_id = 1:nrow(df_city))
+
+df_city <- df_city[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,
+                                        df_city,
+                                        by = "city_desc"))
+
+# country
+df_country <- df_job_posting_work %>% 
+  distinct(country_desc) 
+
+df_country <- df_country %>% 
+  mutate(country_id = 1:nrow(df_country))
+
+df_country <- df_country[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,
+                                        df_country,
+                                        by = "country_desc"))
+
+# search_position (appears to group job titles)
+df_search_pos <- df_job_posting_work %>% 
+  distinct(search_pos_desc) 
+
+df_search_pos <- df_search_pos %>% 
+  mutate(search_pos_id = 1:nrow(df_search_pos))
+
+df_search_pos <- df_search_pos[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,
+                                        df_search_pos,
+                                        by = "search_pos_desc"))
+
+# job_level
+df_job_level <- df_job_posting_work %>% 
+  distinct(job_level_desc) 
+
+df_job_level <- df_job_level %>% 
+  mutate(job_level_id = 1:nrow(df_job_level))
+
+df_job_level <- df_job_level[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,
+                                        df_job_level,
+                                        by = "job_level_desc"))
+
+# onsite_flag
+df_onsite_flag <- df_job_posting_work %>% 
+  distinct(onsite_flag_desc) 
+
+df_onsite_flag <- df_onsite_flag %>% 
+  mutate(onsite_flag_id = 1:nrow(df_onsite_flag))
+
+df_onsite_flag <- df_onsite_flag[,c(2,1)]
+
+df_job_posting_work <- mutate(left_join(df_job_posting_work,
+                                        df_onsite_flag,
+                                        by = "onsite_flag_desc"))
+
+
+str(df_title)
+
+str(df_job_posting_work)  
+
+```
+
+With the lookup tables created and all the keys now in the working copy of the table, we removed all the repeating values and were left with the final job posting table for MySQL:
+
+```{r final_job_posting}
+
+# Create job_posting normalized table with keys
+
+df_job_posting <- df_job_posting_work %>% 
+  select(posting_id,
+         URL,
+         first_seen,
+         last_processed,
+         title_id,
+         company_id,
+         location_raw,
+         city_id,
+         country_id,
+         search_pos_id,
+         job_level_id,
+         onsite_flag_id
+         )
+
+str(df_job_posting)
+
+```
+
+### 2. Skills by Job Posting
+
+The **raw_job_postings_skills** file pictured in Fig. 4 below was in a tidy format, with one row per observation (in this case, job posting/skills list pairs).
+
+However, although tidy, it required significant cleaning, transformation, and tidying in order to be used for analysis:
+
+1.  The primary key was the URL of the job posting
+2.  Skills for each posting were listed in concatenated strings of free text
+3.  These strings contained many invalid characters that would cause import errors in MySQL
+
+**Fig. 4: Original Skills by Posting File**
+
+![](part_1_fig_3png.png)
+
+Our first step was to parse the skills string into columns:
+
+```{r skills_orig}
+
+#-------- Import table and parse comma delimited list of skills into columns: 
+
+df_job_skills_raw <- read_csv("https://raw.githubusercontent.com/unsecuredAMRAP/607pr3/main/1_R_transform_raw_files_for_SQL/raw_job_skills2.csv")
+
+df_job_skills_raw <- df_job_skills_raw  %>%  
+  rename(posting_id = id_simple, URL = job_link)
+
+#NOTE we capped this at 200 skills per posting; 32 positions had more than 200
+
+df_skills_work <- df_job_skills_raw %>% 
+  separate_wider_delim(job_skills,
+                    delim=",",
+                    names=c("Skill_1","Skill_2","Skill_3","Skill_4","Skill_5", "Skill_6","Skill_7","Skill_8","Skill_9","Skill_10", "Skill_11","Skill_12","Skill_13","Skill_14","Skill_15", "Skill_16","Skill_17","Skill_18","Skill_19","Skill_20", "Skill_21","Skill_22","Skill_23","Skill_24","Skill_25", "Skill_26","Skill_27","Skill_28","Skill_29","Skill_30", "Skill_31","Skill_32","Skill_33","Skill_34","Skill_35", "Skill_36","Skill_37","Skill_38","Skill_39","Skill_40", "Skill_41","Skill_42","Skill_43","Skill_44","Skill_45", "Skill_46","Skill_47","Skill_48","Skill_49","Skill_50", "Skill_51","Skill_52","Skill_53","Skill_54","Skill_55", "Skill_56","Skill_57","Skill_58","Skill_59","Skill_60", "Skill_61","Skill_62","Skill_63","Skill_64","Skill_65", "Skill_66","Skill_67","Skill_68","Skill_69","Skill_70", "Skill_71","Skill_72","Skill_73","Skill_74","Skill_75", "Skill_76","Skill_77","Skill_78","Skill_79","Skill_80", "Skill_81","Skill_82","Skill_83","Skill_84","Skill_85", "Skill_86","Skill_87","Skill_88","Skill_89","Skill_90", "Skill_91","Skill_92","Skill_93","Skill_94","Skill_95", "Skill_96","Skill_97","Skill_98","Skill_99","Skill_100", "Skill_101","Skill_102","Skill_103","Skill_104","Skill_105", "Skill_106","Skill_107","Skill_108","Skill_109","Skill_110", "Skill_111","Skill_112","Skill_113","Skill_114","Skill_115", "Skill_116","Skill_117","Skill_118","Skill_119","Skill_120", "Skill_121","Skill_122","Skill_123","Skill_124","Skill_125", "Skill_126","Skill_127","Skill_128","Skill_129","Skill_130", "Skill_131","Skill_132","Skill_133","Skill_134","Skill_135", "Skill_136","Skill_137","Skill_138","Skill_139","Skill_140", "Skill_141","Skill_142","Skill_143","Skill_144","Skill_145", "Skill_146","Skill_147","Skill_148","Skill_149","Skill_150", "Skill_151","Skill_152","Skill_153","Skill_154","Skill_155", "Skill_156","Skill_157","Skill_158","Skill_159","Skill_160", "Skill_161","Skill_162","Skill_163","Skill_164","Skill_165", "Skill_166","Skill_167","Skill_168","Skill_169","Skill_170", "Skill_171","Skill_172","Skill_173","Skill_174","Skill_175", "Skill_176","Skill_177","Skill_178","Skill_179","Skill_180", "Skill_181","Skill_182","Skill_183","Skill_184","Skill_185", "Skill_186","Skill_187","Skill_188","Skill_189","Skill_190", "Skill_191","Skill_192","Skill_193","Skill_194","Skill_195", "Skill_196","Skill_197","Skill_198","Skill_199","Skill_200" ), 
+      too_many = "drop", 
+      too_few = "align_start")
+
+df_skills_work$posting_id <- as.character(df_skills_work$posting_id)
+
+str(df_skills_work)
+
+```
+
+We needed to transform this very wide dataframe to a long tidy format for analysis by melting these repeating data elements into rows. We also cleaned those values by removing white spaces in this step.
+
+```{r skills_tidy}
+
+#-------- Melt skills and remove white spaces
+
+df_skills_melt <- df_skills_work  %>%  
+  pivot_longer(-c(posting_id, URL), names_to = "skill_order", values_to = "skill_desc", values_drop_na = TRUE,)
+
+df_skills_melt$skill_desc <- str_trim(df_skills_melt$skill_desc)
+
+df_skills_melt <- df_skills_melt[,c(1,4)]
+
+head(df_skills_melt, 5)
+
+```
+
+Finally, we created the skills table and exported it:
+
+```{r skills_export}
+
+# Create skills lookup table (note: this was not used in MySQL due to unresolved errors)
+df_skills_master <- df_skills_melt %>% 
+  distinct(skill_desc)
+
+df_skills_master <- df_skills_master %>% 
+  mutate(skill_id = 1:nrow(df_skills_master))
+
+df_skills_master <- df_skills_master[,c(2,1)]
+
+# Create job posting skills with desc table 
+
+df_job_posting_skills_w_desc <- mutate(left_join(df_skills_melt,
+                                        df_skills_master,
+                                        by = "skill_desc"))
+
+df_job_posting_skills_w_desc <- df_job_posting_skills_w_desc[,c(1,3,2)]
+
+head(df_job_posting_skills_w_desc)
+
+
+#----------- Write all to .csv for SQL 
+
+write.csv(df_city,"tbl_city.csv", row.names=FALSE)
+write.csv(df_company,"tbl_company.csv", row.names=FALSE)
+write.csv(df_country,"tbl_country.csv", row.names=FALSE)
+write.csv(df_job_level,"tbl_job_level.csv", row.names=FALSE)
+write.csv(df_job_posting,"tbl_job_posting.csv", row.names=FALSE)
+write.csv(df_onsite_flag,"tbl_onsite_flag.csv", row.names=FALSE)
+write.csv(df_search_pos,"tbl_search_pos.csv", row.names=FALSE)
+write.csv(df_title,"tbl_title.csv", row.names=FALSE)
+write.csv(df_job_posting_skills_w_desc,"tbl_job_posting_skills_w_desc.csv", row.names=FALSE)
+
+```
+
+## Import to MySQL:
+
+The attached SQL script was used to generate the tables and load the data. In loading the data, we found that two main tables still contained an excessive number of rogue commas and invalid characters, which R handled correctly in dataframes but MySQL could not import to tables.
+
+To resolve: 1. All files were converted to tab-delimited before loading, to handle delimiter issues in text strings like job description or skill description
+
+2.  The two main tables also required multiple iterations of removing invalid characters
+
+One error required us to denormalize the job posting skills table as a workaround due to time constraints: joins to the planned lookup table "skills_master" containing skill descriptions failed in testing and we found a large number of silent loading errors ("show warnings" command) that could not be resolved in time. Although the resulting job_posting_skills_w_desc table was not normalized, the functionality of the data was maintained.
+
+Record counts and links were validated and the database released for analysis.
+
+#### SQL Script:
+
+{r sql_load}
+
+
+-- Create main tbl_job_posting: one row per job posting
+
+drop table if exists tbl_job_posting;
+create table tbl_job_posting (
+	posting_id varchar(8) primary key,
+    URL longtext,
+    first_seen varchar(255),
+    last_processed varchar(255),
+    title_id varchar(8),
+    company_id varchar(8),
+    location_id varchar(8),
+    city_id varchar(8),
+    country_id varchar(8),
+    search_pos_id varchar(8),
+    job_level_id varchar(8),
+    onsite_flag_id varchar(8)
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting.txt'
+into table tbl_job_posting
+ignore 1 rows;
+select * from tbl_job_posting;
+select count(*) from tbl_job_posting;
+
+
+-- Create all lookup tables
+
+drop table if exists tbl_title;
+create table tbl_title (
+	title_id varchar(8) primary key,
+    title_desc longtext
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_title.txt'
+into table tbl_title
+ignore 1 rows;
+select * from tbl_title;
+select count(*) from tbl_title;
+
+
+drop table if exists tbl_company;
+create table tbl_company (
+	company_id varchar(8) primary key,
+    company_desc longtext
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_company.txt'
+into table tbl_company
+ignore 1 rows;
+select * from tbl_company;
+select count(*) from tbl_company;
+
+
+drop table if exists tbl_city;
+create table tbl_city (
+	city_id varchar(8) primary key,
+    city_desc longtext
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_city.txt'
+into table tbl_city
+ignore 1 rows;
+select * from tbl_city;
+select count(*) from tbl_city;
+
+
+drop table if exists tbl_country;
+create table tbl_country (
+	country_id varchar(8) primary key,
+    country_desc longtext
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_country.txt'
+into table tbl_country
+ignore 1 rows;
+select * from tbl_country;
+select count(*) from tbl_country;
+
+
+drop table if exists tbl_search_position;
+create table tbl_search_position (
+	search_pos_id varchar(8) primary key,
+    search_pos_desc longtext
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_search_pos.txt'
+into table tbl_search_position
+ignore 1 rows;
+select * from tbl_search_position;
+select count(*) from tbl_search_position;
+
+
+drop table if exists tbl_job_level;
+create table tbl_job_level(
+	job_level_id varchar(8) primary key,
+    job_level_desc longtext
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_level.txt'
+into table tbl_job_level
+ignore 1 rows;
+select * from tbl_job_level;
+select count(*) from tbl_job_level;
+
+drop table if exists tbl_onsite_flag;
+create table tbl_onsite_flag as
+SELECT distinct onsite_flag_id
+FROM project_3_team.tbl_job_posting;
+
+ALTER TABLE tbl_onsite_flag ADD COLUMN onsite_desc varchar(20);
+UPDATE 
+  tbl_onsite_flag 
+SET onsite_desc = CASE onsite_flag_id 
+                  WHEN 1 THEN "On_Site"
+                  WHEN 2 THEN "Hybrid"
+                  ELSE "Remote"
+                END;
+
+
+drop table if exists tbl_job_posting_skills_w_desc;
+create table tbl_job_posting_skills_w_desc (
+	posting_id varchar(20),
+    skills_id varchar(20),
+    skills_desc varchar(255)
+	);
+load data local infile 'C:/Users/amand/Git_Projects/DATA607/project_3/tbl_job_posting_skills_w_desc.txt'
+into table tbl_job_posting_skills_w_desc
+FIELDS TERMINATED BY '\t'
+ignore 1 rows;
+show warnings;   
+select * from tbl_job_posting_skills_w_desc;
+select count(*) from tbl_job_posting_skills_w_desc;
+
+
+
+
+*1 Asaniczka. (2024). Data Science Job Postings & Skills (2024) \[Data set\]. Kaggle. https://doi.org/10.34740/KAGGLE/DS/4407481*

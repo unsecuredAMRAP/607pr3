@@ -1,0 +1,47 @@
+---
+title: "Project_3_Team_4_Part_1"
+date: 3/17/2024
+format: html
+---
+
+## Introduction
+
+
+
+``` {r getdata}
+output = FALSE
+
+library (tidyverse)
+library (dplyr)
+
+```
+
+
+#-------- Import raw postings from github and transform to include necessary columns & good names
+#-------- note - these were lightly cleaned  for rogue commas and invalid characters before import here
+
+``` {r import_raw}
+
+df_job_posting_raw <- read_csv("https://raw.githubusercontent.com/unsecuredAMRAP/607pr3/main/1_R_transform_raw_files_for_SQL/raw_job_postings.csv")
+
+df_job_posting_work <- df_job_posting_raw %>% 
+  select(posting_id = id_simple,
+         URL = job_link,
+         first_seen = first_seen,
+         last_processed = last_processed_time,
+         title_desc = job_title,
+         company_desc = company,
+         location_raw = job_location,
+         city_desc = search_city,
+         country_desc = search_country,
+         search_pos_desc = search_position,
+         job_level_desc = job_level,
+         onsite_flag_desc = job_type
+  )
+
+head(df_job_posting_raw)
+
+
+
+```
+

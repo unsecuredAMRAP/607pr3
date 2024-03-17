@@ -1,3 +1,5 @@
-RPubs for this project 
+RPubs for this project:
+
 Data Preparation http://rpubs.com/mazzaa11/1162686 
-Data Analysis https://rpubs.com/UnsecStat/1162619
+
+Data Visualization and Analysis https://rpubs.com/UnsecStat/1162725
